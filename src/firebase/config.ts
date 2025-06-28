@@ -4,13 +4,13 @@ import { getFirestore } from 'firebase/firestore';
 import { getFunctions } from 'firebase/functions';
 
 const firebaseConfig = {
-  // Replace with your Firebase config
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "demo-api-key",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "demo-project.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "demo-project",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "demo-project.appspot.com",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "123456789",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:123456789:web:abc123def456"
+  apiKey: "AIzaSyC7JlrcphyQyBESZqinfRTtx-uEXro1EOs",
+  authDomain: "e-gram-panchayat-54791.firebaseapp.com",
+  projectId: "e-gram-panchayat-54791",
+  storageBucket: "e-gram-panchayat-54791.firebasestorage.app",
+  messagingSenderId: "196456808065",
+  appId: "1:196456808065:web:afc7ae9926b873d7745780",
+  measurementId: "G-41GJGF6YC6"
 };
 
 // Initialize Firebase
