@@ -17,7 +17,12 @@
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.26.1",
     "firebase": "^10.13.0",
-    "lucide-react": "^0.441.0"
+    "lucide-react": "^0.441.0",
+    "react-hot-toast": "^2.4.1",
+    "framer-motion": "^10.16.4",
+    "date-fns": "^2.30.0",
+    "clsx": "^2.0.0",
+    "tailwind-merge": "^2.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",
