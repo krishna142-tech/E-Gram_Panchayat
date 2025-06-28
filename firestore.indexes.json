@@ -11,6 +11,10 @@
         {
           "fieldPath": "submittedAt",
           "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
         }
       ]
     },
