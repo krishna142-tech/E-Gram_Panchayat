@@ -1,0 +1,42 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users can read and update their own user document
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['staff', 'admin']);
+    }
+
+    // Services are readable by all authenticated users
+    // Only admins can create, update, or delete services
+    match /services/{serviceId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Applications
+    match /applications/{applicationId} {
+      // Users can read their own applications and create new ones
+      allow read, create: if request.auth != null && 
+        (resource.data.userId == request.auth.uid || request.auth.uid == resource.data.userId);
+      
+      // Staff and admins can read all applications
+      allow read: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['staff', 'admin'];
+      
+      // Staff and admins can update application status
+      allow update: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['staff', 'admin'] &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'remarks', 'updatedAt', 'updatedBy']);
+    }
+
+    // Logs are write-only for authenticated users, read-only for admins
+    match /logs/{logId} {
+      allow create: if request.auth != null;
+      allow read: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+  }
+}
