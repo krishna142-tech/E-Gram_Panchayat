@@ -17,18 +17,24 @@ import { logAction } from './logging';
 
 export const getServices = async (): Promise<Service[]> => {
   try {
-    const q = query(
-      collection(db, 'services'),
-      where('isActive', '==', true),
-      orderBy('createdAt', 'desc')
-    );
-    const snapshot = await getDocs(q);
+    // Remove the compound query that requires an index
+    // Instead, fetch all services and filter active ones in memory
+    const snapshot = await getDocs(collection(db, 'services'));
     
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate(),
-    })) as Service[];
+    const services = snapshot.docs
+      .map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate(),
+      })) as Service[]
+      .filter(service => service.isActive) // Filter active services in memory
+      .sort((a, b) => {
+        // Sort by createdAt in descending order (newest first)
+        if (!a.createdAt || !b.createdAt) return 0;
+        return b.createdAt.getTime() - a.createdAt.getTime();
+      });
+    
+    return services;
   } catch (error) {
     console.error('Error fetching services:', error);
     throw error;
