@@ -26,7 +26,9 @@ export const getServices = async (): Promise<Service[]> => {
         id: doc.id,
         ...doc.data(),
         createdAt: doc.data().createdAt?.toDate(),
-      })) as Service[]
+      })) as Service[];
+    
+    const activeServices = services
       .filter(service => service.isActive) // Filter active services in memory
       .sort((a, b) => {
         // Sort by createdAt in descending order (newest first)
@@ -34,7 +36,7 @@ export const getServices = async (): Promise<Service[]> => {
         return b.createdAt.getTime() - a.createdAt.getTime();
       });
     
-    return services;
+    return activeServices;
   } catch (error) {
     console.error('Error fetching services:', error);
     throw error;
