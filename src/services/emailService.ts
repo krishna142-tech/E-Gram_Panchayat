@@ -3,6 +3,7 @@ import emailjs from '@emailjs/browser';
 // EmailJS configuration
 const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID;
 const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
+const EMAILJS_OTP_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_OTP_TEMPLATE_ID;
 const EMAILJS_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
 
 // Initialize EmailJS
@@ -38,6 +39,12 @@ export interface ApplicationNotificationData {
   remarks?: string;
 }
 
+export interface OTPEmailData {
+  to_email: string;
+  to_name: string;
+  otp_code: string;
+}
+
 // Send contact form email
 export const sendContactEmail = async (data: ContactEmailData): Promise<void> => {
   try {
@@ -66,6 +73,54 @@ export const sendContactEmail = async (data: ContactEmailData): Promise<void> =>
   } catch (error) {
     console.error('Error sending contact email:', error);
     throw new Error('Failed to send email. Please try again later.');
+  }
+};
+
+// Send OTP email
+export const sendOTPEmail = async (data: OTPEmailData): Promise<void> => {
+  try {
+    if (!EMAILJS_SERVICE_ID || !EMAILJS_PUBLIC_KEY) {
+      throw new Error('EmailJS configuration is missing. Please check your environment variables.');
+    }
+
+    // Use OTP template if available, otherwise use main template
+    const templateId = EMAILJS_OTP_TEMPLATE_ID || EMAILJS_TEMPLATE_ID;
+
+    const templateParams = {
+      to_email: data.to_email,
+      to_name: data.to_name,
+      from_name: 'Digital E-Gram Panchayat',
+      subject: 'Email Verification - OTP Code',
+      message: `
+Dear ${data.to_name},
+
+Your email verification code for Digital E-Gram Panchayat registration is:
+
+${data.otp_code}
+
+This code will expire in 5 minutes. Please do not share this code with anyone.
+
+If you did not request this verification, please ignore this email.
+
+Best regards,
+Digital E-Gram Panchayat Team
+      `,
+      otp_code: data.otp_code,
+      reply_to: 'noreply@grampanchayat.gov.in',
+    };
+
+    const response = await emailjs.send(
+      EMAILJS_SERVICE_ID,
+      templateId,
+      templateParams
+    );
+
+    if (response.status !== 200) {
+      throw new Error('Failed to send OTP email');
+    }
+  } catch (error) {
+    console.error('Error sending OTP email:', error);
+    throw new Error('Failed to send verification code. Please try again.');
   }
 };
 
