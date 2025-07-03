@@ -178,20 +178,7 @@ const Register: React.FC = () => {
                       Need Staff or Admin Access?
                     </p>
                     <p className="text-xs text-warning-700 dark:text-warning-300 mt-1">
-                      Contact support at{' '}
-                      <a 
-                        href="mailto:support@grampanchayat.gov.in" 
-                        className="underline hover:no-underline"
-                      >
-                        support@grampanchayat.gov.in
-                      </a>{' '}
-                      or call{' '}
-                      <a 
-                        href="tel:+911234567890" 
-                        className="underline hover:no-underline"
-                      >
-                        +91 1234567890
-                      </a>
+                      Contact support
                     </p>
                   </div>
                 </div>
