@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Mail, Lock, User, Eye, EyeOff, ArrowRight, Shield } from 'lucide-react';
+import { Mail, Lock, User, Eye, EyeOff, ArrowRight, Shield, AlertCircle } from 'lucide-react';
 import { registerUser } from '../services/auth';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
@@ -60,9 +60,9 @@ const Register: React.FC = () => {
   };
 
   const roleOptions = [
-    { value: 'citizen', label: 'Citizen', description: 'Apply for services and track applications' },
-    { value: 'staff', label: 'Staff Member', description: 'Review and process applications' },
-    { value: 'admin', label: 'Administrator', description: 'Manage services and system settings' },
+    { value: 'citizen', label: 'Citizen', description: 'Apply for services and track applications', disabled: false },
+    { value: 'staff', label: 'Staff Member', description: 'Contact support for staff access', disabled: true },
+    { value: 'admin', label: 'Administrator', description: 'Contact support for admin access', disabled: true },
   ];
 
   return (
@@ -143,7 +143,7 @@ const Register: React.FC = () => {
 
             <div className="space-y-2">
               <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-300">
-                Role
+                Account Type
               </label>
               <div className="relative">
                 <Shield className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-secondary-400" />
@@ -154,8 +154,13 @@ const Register: React.FC = () => {
                   className="block w-full pl-10 pr-4 py-3 border-2 border-secondary-200 dark:border-secondary-700 bg-white dark:bg-secondary-800 rounded-xl text-secondary-900 dark:text-secondary-100 focus:border-primary-500 focus:ring-2 focus:ring-primary-500 focus:ring-opacity-20 transition-all duration-200"
                 >
                   {roleOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
+                    <option 
+                      key={option.value} 
+                      value={option.value}
+                      disabled={option.disabled}
+                      className={option.disabled ? 'text-secondary-400' : ''}
+                    >
+                      {option.label} {option.disabled ? '(Contact Support)' : ''}
                     </option>
                   ))}
                 </select>
@@ -163,6 +168,34 @@ const Register: React.FC = () => {
               <p className="text-xs text-secondary-500 dark:text-secondary-400">
                 {roleOptions.find(opt => opt.value === formData.role)?.description}
               </p>
+              
+              {/* Staff/Admin Contact Notice */}
+              <div className="bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-800 rounded-lg p-3">
+                <div className="flex items-start space-x-2">
+                  <AlertCircle className="w-4 h-4 text-warning-600 dark:text-warning-400 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-xs font-medium text-warning-800 dark:text-warning-200">
+                      Need Staff or Admin Access?
+                    </p>
+                    <p className="text-xs text-warning-700 dark:text-warning-300 mt-1">
+                      Contact support at{' '}
+                      <a 
+                        href="mailto:support@grampanchayat.gov.in" 
+                        className="underline hover:no-underline"
+                      >
+                        support@grampanchayat.gov.in
+                      </a>{' '}
+                      or call{' '}
+                      <a 
+                        href="tel:+911234567890" 
+                        className="underline hover:no-underline"
+                      >
+                        +91 1234567890
+                      </a>
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div className="relative">
@@ -252,7 +285,7 @@ const Register: React.FC = () => {
                 Sign in here
               </Link>
             </p>
-          </motion.div>
+          </div>
         </Card>
       </motion.div>
     </div>
