@@ -87,6 +87,7 @@ export const sendOTPEmail = async (data: OTPEmailData): Promise<void> => {
     const templateId = EMAILJS_OTP_TEMPLATE_ID || EMAILJS_TEMPLATE_ID;
 
     const templateParams = {
+      email: data.to_email, // Common variable name for recipient email
       to_email: data.to_email, // Primary recipient email field
       user_email: data.to_email, // Alternative recipient email field
       to_name: data.to_name,
