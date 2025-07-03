@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Lock, User, Eye, EyeOff, ArrowRight, Shield, AlertCircle, HelpCircle, CheckCircle, Clock, RefreshCw } from 'lucide-react';
+import { Mail, Lock, User, Eye, EyeOff, ArrowRight, Shield, CheckCircle, Clock, RefreshCw } from 'lucide-react';
 import { registerUser } from '../services/auth';
 import { sendOTP, verifyOTP, getOTPRemainingTime } from '../services/otpService';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Card from '../components/ui/Card';
 import OTPInput from '../components/ui/OTPInput';
-import SupportRequestModal from '../components/ui/SupportRequestModal';
 import toast from 'react-hot-toast';
 
 const Register: React.FC = () => {
@@ -18,13 +17,11 @@ const Register: React.FC = () => {
     password: '',
     confirmPassword: '',
     displayName: '',
-    role: 'citizen' as 'citizen' | 'staff' | 'admin',
+    role: 'citizen' as 'citizen',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [showSupportModal, setShowSupportModal] = useState(false);
-  const [supportRequestType, setSupportRequestType] = useState<'staff' | 'admin'>('staff');
   const [otpError, setOtpError] = useState(false);
   const [remainingTime, setRemainingTime] = useState(0);
   const [canResendOTP, setCanResendOTP] = useState(false);
@@ -165,17 +162,6 @@ const Register: React.FC = () => {
     }));
   };
 
-  const handleSupportRequest = (type: 'staff' | 'admin') => {
-    setSupportRequestType(type);
-    setShowSupportModal(true);
-  };
-
-  const roleOptions = [
-    { value: 'citizen', label: 'Citizen', description: 'Apply for services and track applications', disabled: false },
-    { value: 'staff', label: 'Staff Member', description: 'Contact support for staff access', disabled: true },
-    { value: 'admin', label: 'Administrator', description: 'Contact support for admin access', disabled: true },
-  ];
-
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -277,54 +263,14 @@ const Register: React.FC = () => {
                       value={formData.role}
                       onChange={handleChange}
                       className="block w-full pl-10 pr-4 py-3 border-2 border-secondary-200 dark:border-secondary-700 bg-white dark:bg-secondary-800 rounded-xl text-secondary-900 dark:text-secondary-100 focus:border-primary-500 focus:ring-2 focus:ring-primary-500 focus:ring-opacity-20 transition-all duration-200"
+                      disabled
                     >
-                      {roleOptions.map((option) => (
-                        <option 
-                          key={option.value} 
-                          value={option.value}
-                          disabled={option.disabled}
-                          className={option.disabled ? 'text-secondary-400' : ''}
-                        >
-                          {option.label} {option.disabled ? '(Contact Support)' : ''}
-                        </option>
-                      ))}
+                      <option value="citizen">Citizen</option>
                     </select>
                   </div>
                   <p className="text-xs text-secondary-500 dark:text-secondary-400">
-                    {roleOptions.find(opt => opt.value === formData.role)?.description}
+                    Apply for services and track applications
                   </p>
-                  
-                  {/* Staff/Admin Contact Notice */}
-                  <div className="bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-800 rounded-lg p-3">
-                    <div className="flex items-start space-x-2">
-                      <AlertCircle className="w-4 h-4 text-warning-600 dark:text-warning-400 mt-0.5 flex-shrink-0" />
-                      <div className="flex-1">
-                        <p className="text-xs font-medium text-warning-800 dark:text-warning-200">
-                          Need Staff or Admin Access?
-                        </p>
-                        <p className="text-xs text-warning-700 dark:text-warning-300 mt-1">
-                          Contact support for elevated access
-                        </p>
-                        <div className="flex space-x-2 mt-2">
-                          <button
-                            type="button"
-                            onClick={() => handleSupportRequest('staff')}
-                            className="text-xs text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 font-medium transition-colors"
-                          >
-                            Request Staff Access
-                          </button>
-                          <span className="text-xs text-warning-600">•</span>
-                          <button
-                            type="button"
-                            onClick={() => handleSupportRequest('admin')}
-                            className="text-xs text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 font-medium transition-colors"
-                          >
-                            Request Admin Access
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
                 </div>
 
                 <div className="relative">
@@ -525,13 +471,6 @@ const Register: React.FC = () => {
           )}
         </Card>
       </motion.div>
-
-      {/* Support Request Modal */}
-      <SupportRequestModal
-        isOpen={showSupportModal}
-        onClose={() => setShowSupportModal(false)}
-        requestType={supportRequestType}
-      />
     </div>
   );
 };
