@@ -210,7 +210,7 @@ const Login: React.FC = () => {
                 Create one now
               </Link>
             </p>
-          </div>
+          </motion.div>
         </Card>
       </motion.div>
     </div>
