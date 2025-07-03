@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle } from 'lucide-react';
 import { signInUser } from '../services/auth';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
@@ -26,6 +26,7 @@ const Login: React.FC = () => {
       toast.success('Welcome back!');
       navigate('/');
     } catch (error: any) {
+      console.error('Login error:', error);
       toast.error(error.message || 'Login failed');
     } finally {
       setLoading(false);
@@ -37,6 +38,22 @@ const Login: React.FC = () => {
       ...prev,
       [e.target.name]: e.target.value
     }));
+  };
+
+  const handleDemoLogin = async (email: string, password: string) => {
+    setFormData({ email, password });
+    setLoading(true);
+    
+    try {
+      await signInUser(email, password);
+      toast.success('Demo login successful!');
+      navigate('/');
+    } catch (error: any) {
+      console.error('Demo login error:', error);
+      toast.error(error.message || 'Demo login failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -104,7 +121,7 @@ const Login: React.FC = () => {
               required
             />
 
-            <div className="space-y-2">
+            <div className="relative">
               <Input
                 label="Password"
                 type={showPassword ? 'text' : 'password'}
@@ -179,13 +196,34 @@ const Login: React.FC = () => {
             transition={{ duration: 0.5, delay: 0.7 }}
             className="mt-6 p-4 bg-secondary-50 dark:bg-secondary-700 rounded-xl"
           >
-            <p className="text-xs text-secondary-600 dark:text-secondary-300 text-center mb-2">
-              Demo Accounts (for testing):
-            </p>
-            <div className="text-xs text-secondary-500 dark:text-secondary-400 space-y-1">
-              <div>Admin: admin@demo.com / password</div>
-              <div>Staff: staff@demo.com / password</div>
-              <div>Citizen: citizen@demo.com / password</div>
+            <div className="flex items-center mb-3">
+              <AlertCircle className="w-4 h-4 text-primary-600 mr-2" />
+              <p className="text-sm font-medium text-secondary-700 dark:text-secondary-300">
+                Demo Accounts (for testing):
+              </p>
+            </div>
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => handleDemoLogin('admin@demo.com', 'password')}
+                className="w-full text-left text-xs text-secondary-600 dark:text-secondary-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors p-2 rounded bg-white dark:bg-secondary-800 hover:bg-primary-50 dark:hover:bg-primary-900/20"
+              >
+                <strong>Admin:</strong> admin@demo.com / password
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDemoLogin('staff@demo.com', 'password')}
+                className="w-full text-left text-xs text-secondary-600 dark:text-secondary-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors p-2 rounded bg-white dark:bg-secondary-800 hover:bg-primary-50 dark:hover:bg-primary-900/20"
+              >
+                <strong>Staff:</strong> staff@demo.com / password
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDemoLogin('citizen@demo.com', 'password')}
+                className="w-full text-left text-xs text-secondary-600 dark:text-secondary-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors p-2 rounded bg-white dark:bg-secondary-800 hover:bg-primary-50 dark:hover:bg-primary-900/20"
+              >
+                <strong>Citizen:</strong> citizen@demo.com / password
+              </button>
             </div>
           </motion.div>
         </Card>

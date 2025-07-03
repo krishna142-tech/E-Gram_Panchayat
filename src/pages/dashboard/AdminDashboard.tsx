@@ -1,9 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Users, FileText, Settings } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Plus, Edit2, Trash2, Users, FileText, Settings, Eye, BarChart3, Shield } from 'lucide-react';
 import { getServices, createService, updateService, deleteService } from '../../services/services';
 import { getAllApplications } from '../../services/applications';
 import { useAuth } from '../../context/AuthContext';
 import { Service, Application } from '../../types';
+import Card from '../../components/ui/Card';
+import Button from '../../components/ui/Button';
+import Input from '../../components/ui/Input';
+import Modal from '../../components/ui/Modal';
+import StatusBadge from '../../components/Common/StatusBadge';
+import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 
 const AdminDashboard: React.FC = () => {
@@ -13,6 +20,8 @@ const AdminDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showServiceModal, setShowServiceModal] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
+  const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
+  const [activeTab, setActiveTab] = useState<'overview' | 'services' | 'applications'>('overview');
   const [serviceForm, setServiceForm] = useState({
     title: '',
     description: '',
@@ -28,14 +37,16 @@ const AdminDashboard: React.FC = () => {
 
   const loadData = async () => {
     try {
+      setLoading(true);
       const [servicesData, applicationsData] = await Promise.all([
         getServices(),
         getAllApplications(),
       ]);
       setServices(servicesData);
       setApplications(applicationsData);
-    } catch (error) {
-      toast.error('Failed to load data');
+    } catch (error: any) {
+      console.error('Error loading data:', error);
+      toast.error(error.message || 'Failed to load data');
     } finally {
       setLoading(false);
     }
@@ -56,8 +67,9 @@ const AdminDashboard: React.FC = () => {
       setShowServiceModal(false);
       resetServiceForm();
       loadData();
-    } catch (error) {
-      toast.error('Failed to create service');
+    } catch (error: any) {
+      console.error('Error creating service:', error);
+      toast.error(error.message || 'Failed to create service');
     }
   };
 
@@ -76,21 +88,23 @@ const AdminDashboard: React.FC = () => {
       setEditingService(null);
       resetServiceForm();
       loadData();
-    } catch (error) {
-      toast.error('Failed to update service');
+    } catch (error: any) {
+      console.error('Error updating service:', error);
+      toast.error(error.message || 'Failed to update service');
     }
   };
 
   const handleDeleteService = async (serviceId: string) => {
     if (!user) return;
     
-    if (window.confirm('Are you sure you want to delete this service?')) {
+    if (window.confirm('Are you sure you want to delete this service? This action cannot be undone.')) {
       try {
         await deleteService(serviceId, user.uid);
         toast.success('Service deleted successfully');
         loadData();
-      } catch (error) {
-        toast.error('Failed to delete service');
+      } catch (error: any) {
+        console.error('Error deleting service:', error);
+        toast.error(error.message || 'Failed to delete service');
       }
     }
   };
@@ -144,12 +158,15 @@ const AdminDashboard: React.FC = () => {
     const totalApplications = applications.length;
     const pendingApplications = applications.filter(app => app.status === 'pending').length;
     const approvedApplications = applications.filter(app => app.status === 'approved').length;
+    const rejectedApplications = applications.filter(app => app.status === 'rejected').length;
     
     return {
       totalServices: services.length,
+      activeServices: services.filter(s => s.isActive).length,
       totalApplications,
       pendingApplications,
       approvedApplications,
+      rejectedApplications,
     };
   };
 
@@ -157,324 +174,535 @@ const AdminDashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen flex items-center justify-center bg-secondary-50 dark:bg-secondary-900">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full"
+        />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white shadow-sm">
+    <div className="min-h-screen bg-secondary-50 dark:bg-secondary-900">
+      {/* Header */}
+      <section className="bg-white dark:bg-secondary-800 shadow-soft">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex justify-between items-center">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
+          >
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">
+              <h1 className="text-3xl font-bold text-secondary-900 dark:text-white">
                 Admin Dashboard
               </h1>
-              <p className="text-gray-600 mt-1">
+              <p className="text-secondary-600 dark:text-secondary-300 mt-1">
                 Manage services and oversee all operations
               </p>
             </div>
-            <button
+            <Button
               onClick={() => {
                 resetServiceForm();
                 setEditingService(null);
                 setShowServiceModal(true);
               }}
-              className="inline-flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              className="group"
             >
-              <Plus className="w-4 h-4 mr-2" />
+              <Plus className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
               New Service
-            </button>
-          </div>
+            </Button>
+          </motion.div>
         </div>
-      </div>
+      </section>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <div className="flex items-center">
-              <Settings className="w-8 h-8 text-blue-600" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Services</p>
-                <p className="text-2xl font-semibold text-gray-900">{stats.totalServices}</p>
+        {/* Navigation Tabs */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="mb-8"
+        >
+          <div className="border-b border-secondary-200 dark:border-secondary-700">
+            <nav className="-mb-px flex space-x-8">
+              {[
+                { id: 'overview', label: 'Overview', icon: BarChart3 },
+                { id: 'services', label: 'Services', icon: Settings },
+                { id: 'applications', label: 'Applications', icon: FileText },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`group inline-flex items-center py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                    activeTab === tab.id
+                      ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                      : 'border-transparent text-secondary-500 hover:text-secondary-700 hover:border-secondary-300 dark:text-secondary-400 dark:hover:text-secondary-300'
+                  }`}
+                >
+                  <tab.icon className="w-5 h-5 mr-2" />
+                  {tab.label}
+                </button>
+              ))}
+            </nav>
+          </div>
+        </motion.div>
+
+        {/* Overview Tab */}
+        {activeTab === 'overview' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="space-y-8"
+          >
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[
+                { icon: Settings, label: 'Total Services', value: stats.totalServices, color: 'from-blue-500 to-blue-600' },
+                { icon: Shield, label: 'Active Services', value: stats.activeServices, color: 'from-green-500 to-green-600' },
+                { icon: FileText, label: 'Total Applications', value: stats.totalApplications, color: 'from-purple-500 to-purple-600' },
+                { icon: Users, label: 'Pending Applications', value: stats.pendingApplications, color: 'from-yellow-500 to-yellow-600' },
+                { icon: FileText, label: 'Approved Applications', value: stats.approvedApplications, color: 'from-green-500 to-green-600' },
+                { icon: FileText, label: 'Rejected Applications', value: stats.rejectedApplications, color: 'from-red-500 to-red-600' },
+              ].map((stat, index) => (
+                <motion.div
+                  key={stat.label}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: index * 0.1 }}
+                >
+                  <Card hover>
+                    <div className="flex items-center">
+                      <div className={`w-12 h-12 bg-gradient-to-br ${stat.color} rounded-xl flex items-center justify-center shadow-soft`}>
+                        <stat.icon className="w-6 h-6 text-white" />
+                      </div>
+                      <div className="ml-4">
+                        <p className="text-sm font-medium text-secondary-600 dark:text-secondary-400">{stat.label}</p>
+                        <p className="text-2xl font-semibold text-secondary-900 dark:text-white">{stat.value}</p>
+                      </div>
+                    </div>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Recent Applications */}
+            <Card>
+              <div className="px-6 py-4 border-b border-secondary-200 dark:border-secondary-700">
+                <h3 className="text-lg font-semibold text-secondary-900 dark:text-white">Recent Applications</h3>
               </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <div className="flex items-center">
-              <FileText className="w-8 h-8 text-green-600" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Applications</p>
-                <p className="text-2xl font-semibold text-gray-900">{stats.totalApplications}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <div className="flex items-center">
-              <Users className="w-8 h-8 text-yellow-600" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Pending Applications</p>
-                <p className="text-2xl font-semibold text-gray-900">{stats.pendingApplications}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <div className="flex items-center">
-              <FileText className="w-8 h-8 text-green-600" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Approved Applications</p>
-                <p className="text-2xl font-semibold text-gray-900">{stats.approvedApplications}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Services Management */}
-        <div className="bg-white rounded-lg shadow-md">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">Services Management</h2>
-          </div>
-
-          {services.length === 0 ? (
-            <div className="text-center py-12">
-              <Settings className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No services created</h3>
-              <p className="text-gray-600 mb-4">
-                Start by creating your first government service.
-              </p>
-              <button
-                onClick={() => {
-                  resetServiceForm();
-                  setEditingService(null);
-                  setShowServiceModal(true);
-                }}
-                className="inline-flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Create Service
-              </button>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Service
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Category
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Fee
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {services.map((service) => (
-                    <tr key={service.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          {service.title}
+              <div className="p-6">
+                {applications.slice(0, 5).length === 0 ? (
+                  <p className="text-secondary-600 dark:text-secondary-300 text-center py-8">
+                    No applications submitted yet
+                  </p>
+                ) : (
+                  <div className="space-y-4">
+                    {applications.slice(0, 5).map((application) => (
+                      <div key={application.id} className="flex items-center justify-between p-4 bg-secondary-50 dark:bg-secondary-800 rounded-lg">
+                        <div className="flex-1">
+                          <h4 className="font-medium text-secondary-900 dark:text-white">{application.serviceName}</h4>
+                          <p className="text-sm text-secondary-600 dark:text-secondary-300">
+                            by {application.userName} • {format(application.submittedAt, 'MMM dd, yyyy')}
+                          </p>
                         </div>
-                        <div className="text-sm text-gray-500 line-clamp-2">
-                          {service.description}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          {service.category}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        ₹{service.fee}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          service.isActive
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {service.isActive ? 'Active' : 'Inactive'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => openEditModal(service)}
-                            className="text-blue-600 hover:text-blue-900"
+                        <div className="flex items-center space-x-3">
+                          <StatusBadge status={application.status} />
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setSelectedApplication(application)}
                           >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteService(service.id)}
-                            className="text-red-600 hover:text-red-900"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                            <Eye className="w-4 h-4" />
+                          </Button>
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </Card>
+          </motion.div>
+        )}
+
+        {/* Services Tab */}
+        {activeTab === 'services' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+          >
+            <Card>
+              <div className="px-6 py-4 border-b border-secondary-200 dark:border-secondary-700">
+                <h2 className="text-lg font-semibold text-secondary-900 dark:text-white">Services Management</h2>
+              </div>
+
+              {services.length === 0 ? (
+                <div className="text-center py-16">
+                  <Settings className="mx-auto h-16 w-16 text-secondary-400 mb-6" />
+                  <h3 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4">No Services Created</h3>
+                  <p className="text-secondary-600 dark:text-secondary-300 mb-8 max-w-md mx-auto">
+                    Start by creating your first government service to enable citizens to apply online.
+                  </p>
+                  <Button
+                    onClick={() => {
+                      resetServiceForm();
+                      setEditingService(null);
+                      setShowServiceModal(true);
+                    }}
+                    size="lg"
+                  >
+                    <Plus className="w-5 h-5 mr-2" />
+                    Create First Service
+                  </Button>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-secondary-200 dark:divide-secondary-700">
+                    <thead className="bg-secondary-50 dark:bg-secondary-800">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 dark:text-secondary-400 uppercase tracking-wider">
+                          Service
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 dark:text-secondary-400 uppercase tracking-wider">
+                          Category
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 dark:text-secondary-400 uppercase tracking-wider">
+                          Fee
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 dark:text-secondary-400 uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 dark:text-secondary-400 uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-secondary-800 divide-y divide-secondary-200 dark:divide-secondary-700">
+                      {services.map((service) => (
+                        <tr key={service.id} className="hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-secondary-900 dark:text-white">
+                              {service.title}
+                            </div>
+                            <div className="text-sm text-secondary-500 dark:text-secondary-400 line-clamp-2">
+                              {service.description}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200">
+                              {service.category}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-secondary-900 dark:text-secondary-300">
+                            ₹{service.fee}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              service.isActive
+                                ? 'bg-success-100 text-success-800 dark:bg-success-900 dark:text-success-200'
+                                : 'bg-secondary-100 text-secondary-800 dark:bg-secondary-700 dark:text-secondary-200'
+                            }`}>
+                              {service.isActive ? 'Active' : 'Inactive'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <div className="flex space-x-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => openEditModal(service)}
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteService(service.id)}
+                                className="text-error-600 hover:text-error-700"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </Card>
+          </motion.div>
+        )}
+
+        {/* Applications Tab */}
+        {activeTab === 'applications' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+          >
+            <Card>
+              <div className="px-6 py-4 border-b border-secondary-200 dark:border-secondary-700">
+                <h2 className="text-lg font-semibold text-secondary-900 dark:text-white">All Applications</h2>
+              </div>
+
+              {applications.length === 0 ? (
+                <div className="text-center py-16">
+                  <FileText className="mx-auto h-16 w-16 text-secondary-400 mb-6" />
+                  <h3 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4">No Applications</h3>
+                  <p className="text-secondary-600 dark:text-secondary-300">
+                    No applications have been submitted yet.
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-secondary-200 dark:divide-secondary-700">
+                    <thead className="bg-secondary-50 dark:bg-secondary-800">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 dark:text-secondary-400 uppercase tracking-wider">
+                          Applicant
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 dark:text-secondary-400 uppercase tracking-wider">
+                          Service
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 dark:text-secondary-400 uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 dark:text-secondary-400 uppercase tracking-wider">
+                          Submitted
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 dark:text-secondary-400 uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-secondary-800 divide-y divide-secondary-200 dark:divide-secondary-700">
+                      {applications.map((application) => (
+                        <tr key={application.id} className="hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-secondary-900 dark:text-white">
+                              {application.userName}
+                            </div>
+                            <div className="text-sm text-secondary-500 dark:text-secondary-400">
+                              {application.userEmail}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-secondary-900 dark:text-white">
+                              {application.serviceName}
+                            </div>
+                            <div className="text-sm text-secondary-500 dark:text-secondary-400">
+                              ID: {application.id.slice(-8)}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <StatusBadge status={application.status} />
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-secondary-900 dark:text-secondary-300">
+                            {format(application.submittedAt, 'MMM dd, yyyy')}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setSelectedApplication(application)}
+                            >
+                              <Eye className="w-4 h-4 mr-1" />
+                              View
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </Card>
+          </motion.div>
+        )}
       </div>
 
       {/* Service Modal */}
-      {showServiceModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-screen overflow-y-auto">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">
-                {editingService ? 'Edit Service' : 'Create New Service'}
-              </h3>
-            </div>
-            
-            <form onSubmit={editingService ? handleUpdateService : handleCreateService} className="px-6 py-4 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Service Title *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={serviceForm.title}
-                  onChange={(e) => setServiceForm(prev => ({ ...prev, title: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter service title"
-                />
-              </div>
+      <Modal
+        isOpen={showServiceModal}
+        onClose={() => {
+          setShowServiceModal(false);
+          setEditingService(null);
+          resetServiceForm();
+        }}
+        title={editingService ? 'Edit Service' : 'Create New Service'}
+        size="lg"
+      >
+        <form onSubmit={editingService ? handleUpdateService : handleCreateService} className="space-y-6">
+          <Input
+            label="Service Title *"
+            type="text"
+            value={serviceForm.title}
+            onChange={(e) => setServiceForm(prev => ({ ...prev, title: e.target.value }))}
+            placeholder="Enter service title"
+            required
+          />
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Description *
-                </label>
-                <textarea
-                  required
-                  rows={3}
-                  value={serviceForm.description}
-                  onChange={(e) => setServiceForm(prev => ({ ...prev, description: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter service description"
-                />
-              </div>
+          <div>
+            <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-300 mb-2">
+              Description *
+            </label>
+            <textarea
+              rows={3}
+              value={serviceForm.description}
+              onChange={(e) => setServiceForm(prev => ({ ...prev, description: e.target.value }))}
+              className="w-full px-4 py-3 border-2 border-secondary-200 dark:border-secondary-700 bg-white dark:bg-secondary-800 rounded-xl text-secondary-900 dark:text-secondary-100 placeholder-secondary-500 dark:placeholder-secondary-400 focus:border-primary-500 focus:ring-2 focus:ring-primary-500 focus:ring-opacity-20 transition-all duration-200"
+              placeholder="Enter service description"
+              required
+            />
+          </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Category *
-                  </label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Category *"
+              type="text"
+              value={serviceForm.category}
+              onChange={(e) => setServiceForm(prev => ({ ...prev, category: e.target.value }))}
+              placeholder="e.g., Certificates, Licenses"
+              required
+            />
+
+            <Input
+              label="Fee (₹) *"
+              type="number"
+              value={serviceForm.fee}
+              onChange={(e) => setServiceForm(prev => ({ ...prev, fee: parseInt(e.target.value) || 0 }))}
+              placeholder="0"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-300 mb-2">
+              Required Documents
+            </label>
+            <div className="space-y-2">
+              {serviceForm.requiredDocuments.map((doc, index) => (
+                <div key={index} className="flex space-x-2">
                   <input
                     type="text"
-                    required
-                    value={serviceForm.category}
-                    onChange={(e) => setServiceForm(prev => ({ ...prev, category: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="e.g., Certificates, Licenses"
+                    value={doc}
+                    onChange={(e) => updateDocumentField(index, e.target.value)}
+                    className="flex-1 px-4 py-3 border-2 border-secondary-200 dark:border-secondary-700 bg-white dark:bg-secondary-800 rounded-xl text-secondary-900 dark:text-secondary-100 placeholder-secondary-500 dark:placeholder-secondary-400 focus:border-primary-500 focus:ring-2 focus:ring-primary-500 focus:ring-opacity-20 transition-all duration-200"
+                    placeholder="Enter required document"
                   />
+                  {serviceForm.requiredDocuments.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => removeDocumentField(index)}
+                    >
+                      Remove
+                    </Button>
+                  )}
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Fee (₹) *
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    min="0"
-                    value={serviceForm.fee}
-                    onChange={(e) => setServiceForm(prev => ({ ...prev, fee: parseInt(e.target.value) || 0 }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="0"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Required Documents
-                </label>
-                <div className="space-y-2">
-                  {serviceForm.requiredDocuments.map((doc, index) => (
-                    <div key={index} className="flex space-x-2">
-                      <input
-                        type="text"
-                        value={doc}
-                        onChange={(e) => updateDocumentField(index, e.target.value)}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Enter required document"
-                      />
-                      {serviceForm.requiredDocuments.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => removeDocumentField(index)}
-                          className="px-3 py-2 text-red-600 hover:text-red-800"
-                        >
-                          Remove
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={addDocumentField}
-                    className="text-blue-600 hover:text-blue-800 text-sm"
-                  >
-                    + Add Document
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="isActive"
-                  checked={serviceForm.isActive}
-                  onChange={(e) => setServiceForm(prev => ({ ...prev, isActive: e.target.checked }))}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                />
-                <label htmlFor="isActive" className="ml-2 text-sm text-gray-700">
-                  Service is active
-                </label>
-              </div>
-
-              <div className="flex justify-end space-x-4 pt-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowServiceModal(false);
-                    setEditingService(null);
-                    resetServiceForm();
-                  }}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                >
-                  {editingService ? 'Update Service' : 'Create Service'}
-                </button>
-              </div>
-            </form>
+              ))}
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={addDocumentField}
+                className="text-primary-600 hover:text-primary-700"
+              >
+                + Add Document
+              </Button>
+            </div>
           </div>
-        </div>
+
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="isActive"
+              checked={serviceForm.isActive}
+              onChange={(e) => setServiceForm(prev => ({ ...prev, isActive: e.target.checked }))}
+              className="w-4 h-4 text-primary-600 border-secondary-300 rounded focus:ring-primary-500 focus:ring-2"
+            />
+            <label htmlFor="isActive" className="ml-2 text-sm text-secondary-700 dark:text-secondary-300">
+              Service is active and available for applications
+            </label>
+          </div>
+
+          <div className="flex justify-end space-x-4 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setShowServiceModal(false);
+                setEditingService(null);
+                resetServiceForm();
+              }}
+            >
+              Cancel
+            </Button>
+            <Button type="submit">
+              {editingService ? 'Update Service' : 'Create Service'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Application Details Modal */}
+      {selectedApplication && (
+        <Modal
+          isOpen={!!selectedApplication}
+          onClose={() => setSelectedApplication(null)}
+          title="Application Details"
+          size="lg"
+        >
+          <div className="space-y-6">
+            <div>
+              <h4 className="font-medium text-secondary-900 dark:text-white mb-2">Applicant Information</h4>
+              <div className="bg-secondary-50 dark:bg-secondary-800 rounded-lg p-4">
+                <p className="text-sm text-secondary-600 dark:text-secondary-300">
+                  <strong>Name:</strong> {selectedApplication.userName}<br />
+                  <strong>Email:</strong> {selectedApplication.userEmail}
+                </p>
+              </div>
+            </div>
+            
+            <div>
+              <h4 className="font-medium text-secondary-900 dark:text-white mb-2">Service</h4>
+              <p className="text-sm text-secondary-600 dark:text-secondary-300">{selectedApplication.serviceName}</p>
+            </div>
+            
+            <div>
+              <h4 className="font-medium text-secondary-900 dark:text-white mb-2">Application Details</h4>
+              <div className="bg-secondary-50 dark:bg-secondary-800 rounded-lg p-4">
+                <div className="text-sm text-secondary-600 dark:text-secondary-300 space-y-1">
+                  {Object.entries(selectedApplication.formData).map(([key, value]) => (
+                    <p key={key}>
+                      <span className="font-medium capitalize">{key.replace(/([A-Z])/g, ' $1')}:</span> {value}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            </div>
+            
+            <div>
+              <h4 className="font-medium text-secondary-900 dark:text-white mb-2">Status</h4>
+              <StatusBadge status={selectedApplication.status} />
+              {selectedApplication.remarks && (
+                <p className="text-sm text-secondary-600 dark:text-secondary-300 mt-2">
+                  <strong>Remarks:</strong> {selectedApplication.remarks}
+                </p>
+              )}
+            </div>
+            
+            <div className="flex justify-end">
+              <Button onClick={() => setSelectedApplication(null)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );
