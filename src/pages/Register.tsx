@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Mail, Lock, User, Eye, EyeOff, ArrowRight, Shield, AlertCircle } from 'lucide-react';
+import { Mail, Lock, User, Eye, EyeOff, ArrowRight, Shield, AlertCircle, HelpCircle } from 'lucide-react';
 import { registerUser } from '../services/auth';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Card from '../components/ui/Card';
+import SupportRequestModal from '../components/ui/SupportRequestModal';
 import toast from 'react-hot-toast';
 
 const Register: React.FC = () => {
@@ -19,6 +20,8 @@ const Register: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showSupportModal, setShowSupportModal] = useState(false);
+  const [supportRequestType, setSupportRequestType] = useState<'staff' | 'admin'>('staff');
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -57,6 +60,11 @@ const Register: React.FC = () => {
       ...prev,
       [e.target.name]: e.target.value
     }));
+  };
+
+  const handleSupportRequest = (type: 'staff' | 'admin') => {
+    setSupportRequestType(type);
+    setShowSupportModal(true);
   };
 
   const roleOptions = [
@@ -173,13 +181,30 @@ const Register: React.FC = () => {
               <div className="bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-800 rounded-lg p-3">
                 <div className="flex items-start space-x-2">
                   <AlertCircle className="w-4 h-4 text-warning-600 dark:text-warning-400 mt-0.5 flex-shrink-0" />
-                  <div>
+                  <div className="flex-1">
                     <p className="text-xs font-medium text-warning-800 dark:text-warning-200">
                       Need Staff or Admin Access?
                     </p>
                     <p className="text-xs text-warning-700 dark:text-warning-300 mt-1">
-                      Contact support
+                      Contact support for elevated access
                     </p>
+                    <div className="flex space-x-2 mt-2">
+                      <button
+                        type="button"
+                        onClick={() => handleSupportRequest('staff')}
+                        className="text-xs text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 font-medium transition-colors"
+                      >
+                        Request Staff Access
+                      </button>
+                      <span className="text-xs text-warning-600">•</span>
+                      <button
+                        type="button"
+                        onClick={() => handleSupportRequest('admin')}
+                        className="text-xs text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 font-medium transition-colors"
+                      >
+                        Request Admin Access
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -275,6 +300,13 @@ const Register: React.FC = () => {
           </motion.div>
         </Card>
       </motion.div>
+
+      {/* Support Request Modal */}
+      <SupportRequestModal
+        isOpen={showSupportModal}
+        onClose={() => setShowSupportModal(false)}
+        requestType={supportRequestType}
+      />
     </div>
   );
 };

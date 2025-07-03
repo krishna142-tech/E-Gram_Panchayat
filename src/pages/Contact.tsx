@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Phone, MapPin, Send, Clock, MessageCircle } from 'lucide-react';
+import { sendContactEmail } from '../services/emailService';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
@@ -19,12 +20,21 @@ const Contact: React.FC = () => {
     e.preventDefault();
     setSubmitting(true);
 
-    // Simulate form submission
-    setTimeout(() => {
+    try {
+      await sendContactEmail({
+        from_name: formData.name,
+        from_email: formData.email,
+        subject: formData.subject,
+        message: formData.message,
+      });
+
       toast.success('Message sent successfully! We will get back to you soon.');
       setFormData({ name: '', email: '', subject: '', message: '' });
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to send message. Please try again.');
+    } finally {
       setSubmitting(false);
-    }, 1000);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
