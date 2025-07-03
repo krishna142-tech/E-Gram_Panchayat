@@ -87,7 +87,7 @@ export const sendOTPEmail = async (data: OTPEmailData): Promise<void> => {
     const templateId = EMAILJS_OTP_TEMPLATE_ID || EMAILJS_TEMPLATE_ID;
 
     const templateParams = {
-      to_email: data.to_email,
+      user_email: data.to_email,
       to_name: data.to_name,
       from_name: 'Digital E-Gram Panchayat',
       subject: 'Email Verification - OTP Code',
