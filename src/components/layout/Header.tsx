@@ -9,13 +9,11 @@ import {
   Moon, 
   Sun, 
   Settings,
-  Bell,
-  Search
+  Bell
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../hooks/useTheme';
 import Button from '../ui/Button';
-import { cn } from '../../lib/utils';
 import toast from 'react-hot-toast';
 
 const Header: React.FC = () => {
