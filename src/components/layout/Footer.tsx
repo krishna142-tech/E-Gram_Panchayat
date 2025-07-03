@@ -9,7 +9,10 @@ import {
   Twitter, 
   Instagram, 
   Linkedin,
-  ArrowRight
+  ArrowRight,
+  Github,
+  Globe,
+  Heart
 } from 'lucide-react';
 
 const Footer: React.FC = () => {
@@ -21,16 +24,16 @@ const Footer: React.FC = () => {
       { name: 'Caste Certificate', href: '/services' },
     ],
     support: [
-      { name: 'Help Center', href: '/help' },
+      { name: 'Help Center', href: '/contact' },
       { name: 'Contact Us', href: '/contact' },
       { name: 'Privacy Policy', href: '/privacy' },
       { name: 'Terms of Service', href: '/terms' },
     ],
     government: [
       { name: 'About Panchayat', href: '/about' },
-      { name: 'Officials', href: '/officials' },
-      { name: 'Schemes', href: '/schemes' },
-      { name: 'Transparency', href: '/transparency' },
+      { name: 'Officials', href: '/about' },
+      { name: 'Schemes', href: '/services' },
+      { name: 'Transparency', href: '/about' },
     ],
   };
 
@@ -156,13 +159,82 @@ const Footer: React.FC = () => {
           </motion.div>
         </div>
 
-        {/* Bottom Section */}
+        {/* Developer Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ delay: 0.4 }}
-          className="border-t border-secondary-800 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center"
+          className="border-t border-secondary-800 mt-12 pt-8"
+        >
+          <div className="bg-gradient-to-r from-primary-900/20 to-accent-900/20 rounded-xl p-6 mb-8">
+            <div className="flex flex-col md:flex-row items-center justify-between">
+              <div className="flex items-center space-x-4 mb-4 md:mb-0">
+                <div className="w-12 h-12 bg-gradient-to-br from-primary-600 to-accent-600 rounded-xl flex items-center justify-center">
+                  <Heart className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h4 className="text-lg font-semibold text-white">Developed with ❤️ by</h4>
+                  <p className="text-primary-300">Krishna Sevak</p>
+                </div>
+              </div>
+              <div className="flex space-x-4">
+                <motion.a
+                  href="https://krishnasevak.netlify.app/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  whileHover={{ scale: 1.1, y: -2 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="w-10 h-10 bg-secondary-800 hover:bg-primary-600 rounded-lg flex items-center justify-center transition-colors duration-200"
+                  aria-label="Portfolio"
+                >
+                  <Globe className="w-5 h-5" />
+                </motion.a>
+                <motion.a
+                  href="https://www.linkedin.com/in/krishna-sevak/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  whileHover={{ scale: 1.1, y: -2 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="w-10 h-10 bg-secondary-800 hover:bg-primary-600 rounded-lg flex items-center justify-center transition-colors duration-200"
+                  aria-label="LinkedIn"
+                >
+                  <Linkedin className="w-5 h-5" />
+                </motion.a>
+                <motion.a
+                  href="https://github.com/krishna142-tech"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  whileHover={{ scale: 1.1, y: -2 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="w-10 h-10 bg-secondary-800 hover:bg-primary-600 rounded-lg flex items-center justify-center transition-colors duration-200"
+                  aria-label="GitHub"
+                >
+                  <Github className="w-5 h-5" />
+                </motion.a>
+                <motion.a
+                  href="https://www.instagram.com/krishnasevak57/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  whileHover={{ scale: 1.1, y: -2 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="w-10 h-10 bg-secondary-800 hover:bg-primary-600 rounded-lg flex items-center justify-center transition-colors duration-200"
+                  aria-label="Instagram"
+                >
+                  <Instagram className="w-5 h-5" />
+                </motion.a>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Bottom Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.5 }}
+          className="border-t border-secondary-800 pt-8 flex flex-col md:flex-row justify-between items-center"
         >
           <p className="text-secondary-400 text-sm">
             © 2025 Digital E-Gram Panchayat. All rights reserved.
