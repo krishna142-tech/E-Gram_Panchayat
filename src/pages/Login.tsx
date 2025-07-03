@@ -210,45 +210,7 @@ const Login: React.FC = () => {
                 Create one now
               </Link>
             </p>
-          </motion.div>
-
-          {/* Demo Accounts */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.7 }}
-            className="mt-6 p-4 bg-secondary-50 dark:bg-secondary-700 rounded-xl"
-          >
-            <div className="flex items-center mb-3">
-              <AlertCircle className="w-4 h-4 text-primary-600 mr-2" />
-              <p className="text-sm font-medium text-secondary-700 dark:text-secondary-300">
-                Demo Accounts (for testing):
-              </p>
-            </div>
-            <div className="space-y-2">
-              <button
-                type="button"
-                onClick={() => handleDemoLogin('admin@demo.com', 'password')}
-                className="w-full text-left text-xs text-secondary-600 dark:text-secondary-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors p-2 rounded bg-white dark:bg-secondary-800 hover:bg-primary-50 dark:hover:bg-primary-900/20"
-              >
-                <strong>Admin:</strong> admin@demo.com / password
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDemoLogin('staff@demo.com', 'password')}
-                className="w-full text-left text-xs text-secondary-600 dark:text-secondary-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors p-2 rounded bg-white dark:bg-secondary-800 hover:bg-primary-50 dark:hover:bg-primary-900/20"
-              >
-                <strong>Staff:</strong> staff@demo.com / password
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDemoLogin('citizen@demo.com', 'password')}
-                className="w-full text-left text-xs text-secondary-600 dark:text-secondary-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors p-2 rounded bg-white dark:bg-secondary-800 hover:bg-primary-50 dark:hover:bg-primary-900/20"
-              >
-                <strong>Citizen:</strong> citizen@demo.com / password
-              </button>
-            </div>
-          </motion.div>
+          </div>
         </Card>
       </motion.div>
     </div>

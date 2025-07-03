@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Lock, User, Eye, EyeOff, ArrowRight, Shield, CheckCircle, Clock, RefreshCw } from 'lucide-react';
+import { Mail, Lock, User, Eye, EyeOff, ArrowRight, Shield, CheckCircle, Clock, RefreshCw, AlertTriangle } from 'lucide-react';
 import { registerUser } from '../services/auth';
 import { sendOTP, verifyOTP, getOTPRemainingTime } from '../services/otpService';
 import Button from '../components/ui/Button';
@@ -17,7 +17,7 @@ const Register: React.FC = () => {
     password: '',
     confirmPassword: '',
     displayName: '',
-    role: 'citizen' as 'citizen',
+    role: 'citizen' as 'citizen' | 'staff' | 'admin',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -82,6 +82,12 @@ const Register: React.FC = () => {
     e.preventDefault();
     
     if (!validateForm()) {
+      return;
+    }
+
+    // Check if user selected staff or admin role
+    if (formData.role === 'staff' || formData.role === 'admin') {
+      toast.error('Please contact support for staff or admin access');
       return;
     }
 
@@ -167,6 +173,12 @@ const Register: React.FC = () => {
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
+
+  const roleOptions = [
+    { value: 'citizen', label: 'Citizen', description: 'Apply for services and track applications' },
+    { value: 'staff', label: 'Staff Member', description: 'Contact support for access' },
+    { value: 'admin', label: 'Administrator', description: 'Contact support for access' },
+  ];
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 via-white to-accent-50 dark:from-secondary-900 dark:via-secondary-900 dark:to-secondary-800 py-12 px-4 sm:px-6 lg:px-8">
@@ -263,14 +275,45 @@ const Register: React.FC = () => {
                       value={formData.role}
                       onChange={handleChange}
                       className="block w-full pl-10 pr-4 py-3 border-2 border-secondary-200 dark:border-secondary-700 bg-white dark:bg-secondary-800 rounded-xl text-secondary-900 dark:text-secondary-100 focus:border-primary-500 focus:ring-2 focus:ring-primary-500 focus:ring-opacity-20 transition-all duration-200"
-                      disabled
                     >
-                      <option value="citizen">Citizen</option>
+                      {roleOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <p className="text-xs text-secondary-500 dark:text-secondary-400">
-                    Apply for services and track applications
+                    {roleOptions.find(opt => opt.value === formData.role)?.description}
                   </p>
+                  
+                  {/* Contact Support Message for Staff/Admin */}
+                  {(formData.role === 'staff' || formData.role === 'admin') && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="mt-3 p-3 bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-800 rounded-lg"
+                    >
+                      <div className="flex items-start space-x-2">
+                        <AlertTriangle className="w-4 h-4 text-warning-600 dark:text-warning-400 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="text-sm font-medium text-warning-800 dark:text-warning-200">
+                            Contact Support Required
+                          </p>
+                          <p className="text-xs text-warning-700 dark:text-warning-300 mt-1">
+                            For {formData.role} access, please contact our support team at{' '}
+                            <Link 
+                              to="/contact" 
+                              className="underline hover:no-underline font-medium"
+                            >
+                              support@grampanchayat.gov.in
+                            </Link>
+                          </p>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
                 </div>
 
                 <div className="relative">
@@ -338,9 +381,13 @@ const Register: React.FC = () => {
                   loading={loading}
                   className="w-full group"
                   size="lg"
+                  disabled={formData.role === 'staff' || formData.role === 'admin'}
                 >
-                  {loading ? 'Sending Code...' : 'Send Verification Code'}
-                  <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  {loading ? 'Sending Code...' : 
+                   (formData.role === 'staff' || formData.role === 'admin') ? 'Contact Support Required' : 'Send Verification Code'}
+                  {!(formData.role === 'staff' || formData.role === 'admin') && (
+                    <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  )}
                 </Button>
               </motion.form>
             )}
