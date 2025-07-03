@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Edit2, Trash2, Users, FileText, Settings, Eye, BarChart3, Shield } from 'lucide-react';
 import { getServices, createService, updateService, deleteService } from '../../services/services';
-import { getAllApplications } from '../../services/applications';
+import { getAllApplications, updateApplicationStatus } from '../../services/applications';
 import { useAuth } from '../../context/AuthContext';
 import { Service, Application } from '../../types';
 import Card from '../../components/ui/Card';
@@ -21,6 +21,8 @@ const AdminDashboard: React.FC = () => {
   const [showServiceModal, setShowServiceModal] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
+  const [updating, setUpdating] = useState(false);
+  const [remarks, setRemarks] = useState('');
   const [activeTab, setActiveTab] = useState<'overview' | 'services' | 'applications'>('overview');
   const [serviceForm, setServiceForm] = useState({
     title: '',
@@ -109,6 +111,24 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  const handleStatusUpdate = async (applicationId: string, status: Application['status']) => {
+    if (!user) return;
+
+    setUpdating(true);
+    try {
+      await updateApplicationStatus(applicationId, status, remarks, user.uid);
+      toast.success('Application status updated successfully');
+      setSelectedApplication(null);
+      setRemarks('');
+      loadData();
+    } catch (error: any) {
+      console.error('Error updating application status:', error);
+      toast.error(error.message || 'Failed to update application status');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   const resetServiceForm = () => {
     setServiceForm({
       title: '',
@@ -131,6 +151,11 @@ const AdminDashboard: React.FC = () => {
       isActive: service.isActive,
     });
     setShowServiceModal(true);
+  };
+
+  const openApplicationModal = (application: Application) => {
+    setSelectedApplication(application);
+    setRemarks(application.remarks || '');
   };
 
   const addDocumentField = () => {
@@ -314,7 +339,7 @@ const AdminDashboard: React.FC = () => {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => setSelectedApplication(application)}
+                            onClick={() => openApplicationModal(application)}
                           >
                             <Eye className="w-4 h-4" />
                           </Button>
@@ -509,10 +534,10 @@ const AdminDashboard: React.FC = () => {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => setSelectedApplication(application)}
+                              onClick={() => openApplicationModal(application)}
                             >
                               <Eye className="w-4 h-4 mr-1" />
-                              View
+                              Review
                             </Button>
                           </td>
                         </tr>
@@ -649,12 +674,15 @@ const AdminDashboard: React.FC = () => {
         </form>
       </Modal>
 
-      {/* Application Details Modal */}
+      {/* Application Details Modal with Status Update */}
       {selectedApplication && (
         <Modal
           isOpen={!!selectedApplication}
-          onClose={() => setSelectedApplication(null)}
-          title="Application Details"
+          onClose={() => {
+            setSelectedApplication(null);
+            setRemarks('');
+          }}
+          title="Review Application"
           size="lg"
         >
           <div className="space-y-6">
@@ -687,19 +715,75 @@ const AdminDashboard: React.FC = () => {
             </div>
             
             <div>
-              <h4 className="font-medium text-secondary-900 dark:text-white mb-2">Status</h4>
+              <h4 className="font-medium text-secondary-900 dark:text-white mb-2">Current Status</h4>
               <StatusBadge status={selectedApplication.status} />
               {selectedApplication.remarks && (
                 <p className="text-sm text-secondary-600 dark:text-secondary-300 mt-2">
-                  <strong>Remarks:</strong> {selectedApplication.remarks}
+                  <strong>Previous Remarks:</strong> {selectedApplication.remarks}
                 </p>
               )}
             </div>
+
+            <div>
+              <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-300 mb-2">
+                Remarks (Optional)
+              </label>
+              <textarea
+                rows={3}
+                value={remarks}
+                onChange={(e) => setRemarks(e.target.value)}
+                className="w-full px-4 py-3 border-2 border-secondary-200 dark:border-secondary-700 bg-white dark:bg-secondary-800 rounded-xl text-secondary-900 dark:text-secondary-100 placeholder-secondary-500 dark:placeholder-secondary-400 focus:border-primary-500 focus:ring-2 focus:ring-primary-500 focus:ring-opacity-20 transition-all duration-200"
+                placeholder="Add remarks about this application..."
+              />
+            </div>
             
-            <div className="flex justify-end">
-              <Button onClick={() => setSelectedApplication(null)}>
-                Close
-              </Button>
+            <div className="flex flex-col space-y-4">
+              <div>
+                <h5 className="text-sm font-medium text-secondary-700 dark:text-secondary-300 mb-3">
+                  Update Status (Admin Override)
+                </h5>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    onClick={() => handleStatusUpdate(selectedApplication.id, 'under-review')}
+                    loading={updating}
+                    variant="outline"
+                    className="bg-yellow-50 border-yellow-200 text-yellow-700 hover:bg-yellow-100"
+                  >
+                    Under Review
+                  </Button>
+                  <Button
+                    onClick={() => handleStatusUpdate(selectedApplication.id, 'approved')}
+                    loading={updating}
+                    variant="outline"
+                    className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+                  >
+                    Approve
+                  </Button>
+                  <Button
+                    onClick={() => handleStatusUpdate(selectedApplication.id, 'rejected')}
+                    loading={updating}
+                    variant="outline"
+                    className="bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
+                  >
+                    Reject
+                  </Button>
+                </div>
+                <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-2">
+                  As an admin, you can override any status set by staff members.
+                </p>
+              </div>
+              
+              <div className="flex justify-end space-x-3 pt-4 border-t border-secondary-200 dark:border-secondary-700">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedApplication(null);
+                    setRemarks('');
+                  }}
+                >
+                  Close
+                </Button>
+              </div>
             </div>
           </div>
         </Modal>
