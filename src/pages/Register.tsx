@@ -285,7 +285,7 @@ const Register: React.FC = () => {
                 Sign in here
               </Link>
             </p>
-          </div>
+          </motion.div>
         </Card>
       </motion.div>
     </div>
