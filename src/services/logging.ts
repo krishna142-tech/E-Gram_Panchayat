@@ -20,19 +20,10 @@ export const logAction = async (
       action,
       details,
       timestamp: serverTimestamp(),
-      ipAddress: await getClientIP(),
+      ipAddress: 'unknown', // Simplified to avoid external API calls
     });
   } catch (error) {
     console.error('Logging error:', error);
-  }
-};
-
-const getClientIP = async (): Promise<string> => {
-  try {
-    const response = await fetch('https://api.ipify.org?format=json');
-    const data = await response.json();
-    return data.ip;
-  } catch (error) {
-    return 'unknown';
+    // Don't throw error for logging failures
   }
 };

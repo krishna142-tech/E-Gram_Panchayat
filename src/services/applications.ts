@@ -8,6 +8,7 @@ import {
   where,
   orderBy,
   serverTimestamp,
+  limit,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { Application } from '../types';
@@ -18,8 +19,18 @@ export const submitApplication = async (
   userId: string
 ): Promise<string> => {
   try {
+    // Validate required fields
+    if (!applicationData.serviceId || !applicationData.serviceName || !applicationData.userId) {
+      throw new Error('Missing required application data');
+    }
+
     const docRef = await addDoc(collection(db, 'applications'), {
-      ...applicationData,
+      serviceId: applicationData.serviceId,
+      serviceName: applicationData.serviceName,
+      userId: applicationData.userId,
+      userName: applicationData.userName || '',
+      userEmail: applicationData.userEmail || '',
+      formData: applicationData.formData || {},
       status: 'pending',
       submittedAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
@@ -34,48 +45,75 @@ export const submitApplication = async (
     return docRef.id;
   } catch (error) {
     console.error('Error submitting application:', error);
-    throw error;
+    throw new Error('Failed to submit application. Please try again.');
   }
 };
 
 export const getUserApplications = async (userId: string): Promise<Application[]> => {
   try {
+    // Use simple query without compound index
     const q = query(
       collection(db, 'applications'),
       where('userId', '==', userId),
-      orderBy('submittedAt', 'desc')
+      limit(100) // Add limit to improve performance
     );
+    
     const snapshot = await getDocs(q);
     
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      submittedAt: doc.data().submittedAt?.toDate(),
-      updatedAt: doc.data().updatedAt?.toDate(),
-    })) as Application[];
+    const applications = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        serviceId: data.serviceId || '',
+        serviceName: data.serviceName || '',
+        userId: data.userId || '',
+        userName: data.userName || '',
+        userEmail: data.userEmail || '',
+        status: data.status || 'pending',
+        formData: data.formData || {},
+        submittedAt: data.submittedAt?.toDate() || new Date(),
+        updatedAt: data.updatedAt?.toDate() || new Date(),
+        updatedBy: data.updatedBy,
+        remarks: data.remarks,
+      };
+    }) as Application[];
+
+    // Sort in memory by submittedAt descending
+    return applications.sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime());
   } catch (error) {
     console.error('Error fetching user applications:', error);
-    throw error;
+    throw new Error('Failed to fetch your applications. Please try again.');
   }
 };
 
 export const getAllApplications = async (): Promise<Application[]> => {
   try {
-    const q = query(
-      collection(db, 'applications'),
-      orderBy('submittedAt', 'desc')
-    );
-    const snapshot = await getDocs(q);
+    // Simple query without ordering to avoid index requirements
+    const snapshot = await getDocs(collection(db, 'applications'));
     
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      submittedAt: doc.data().submittedAt?.toDate(),
-      updatedAt: doc.data().updatedAt?.toDate(),
-    })) as Application[];
+    const applications = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        serviceId: data.serviceId || '',
+        serviceName: data.serviceName || '',
+        userId: data.userId || '',
+        userName: data.userName || '',
+        userEmail: data.userEmail || '',
+        status: data.status || 'pending',
+        formData: data.formData || {},
+        submittedAt: data.submittedAt?.toDate() || new Date(),
+        updatedAt: data.updatedAt?.toDate() || new Date(),
+        updatedBy: data.updatedBy,
+        remarks: data.remarks,
+      };
+    }) as Application[];
+
+    // Sort in memory by submittedAt descending
+    return applications.sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime());
   } catch (error) {
     console.error('Error fetching applications:', error);
-    throw error;
+    throw new Error('Failed to fetch applications. Please try again.');
   }
 };
 
@@ -101,6 +139,6 @@ export const updateApplicationStatus = async (
     });
   } catch (error) {
     console.error('Error updating application status:', error);
-    throw error;
+    throw new Error('Failed to update application status. Please try again.');
   }
 };

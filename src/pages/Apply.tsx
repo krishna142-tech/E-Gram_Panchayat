@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FileText, IndianRupee, AlertCircle } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { FileText, IndianRupee, AlertCircle, CheckCircle, ArrowLeft } from 'lucide-react';
 import { getServiceById } from '../services/services';
 import { submitApplication } from '../services/applications';
 import { useAuth } from '../context/AuthContext';
 import { Service } from '../types';
+import Card from '../components/ui/Card';
+import Button from '../components/ui/Button';
+import Input from '../components/ui/Input';
 import toast from 'react-hot-toast';
 
 const Apply: React.FC = () => {
@@ -16,6 +20,7 @@ const Apply: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (serviceId) {
@@ -25,22 +30,69 @@ const Apply: React.FC = () => {
 
   const loadService = async () => {
     try {
+      setLoading(true);
       if (serviceId) {
         const data = await getServiceById(serviceId);
-        setService(data);
+        if (data) {
+          setService(data);
+        } else {
+          toast.error('Service not found');
+          navigate('/services');
+        }
       }
-    } catch (error) {
-      toast.error('Failed to load service details');
+    } catch (error: any) {
+      console.error('Error loading service:', error);
+      toast.error(error.message || 'Failed to load service details');
       navigate('/services');
     } finally {
       setLoading(false);
     }
   };
 
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.fullName?.trim()) {
+      newErrors.fullName = 'Full name is required';
+    }
+
+    if (!formData.phoneNumber?.trim()) {
+      newErrors.phoneNumber = 'Phone number is required';
+    } else if (!/^\d{10}$/.test(formData.phoneNumber.replace(/\D/g, ''))) {
+      newErrors.phoneNumber = 'Please enter a valid 10-digit phone number';
+    }
+
+    if (!formData.address?.trim()) {
+      newErrors.address = 'Address is required';
+    }
+
+    if (!formData.reason?.trim()) {
+      newErrors.reason = 'Reason for application is required';
+    }
+
+    if (!formData.aadharNumber?.trim()) {
+      newErrors.aadharNumber = 'Aadhar number is required';
+    } else if (!/^\d{12}$/.test(formData.aadharNumber.replace(/\D/g, ''))) {
+      newErrors.aadharNumber = 'Please enter a valid 12-digit Aadhar number';
+    }
+
+    if (!formData.dateOfBirth) {
+      newErrors.dateOfBirth = 'Date of birth is required';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!service || !user) return;
+
+    if (!validateForm()) {
+      toast.error('Please fix the errors in the form');
+      return;
+    }
 
     setSubmitting(true);
 
@@ -56,223 +108,300 @@ const Apply: React.FC = () => {
 
       toast.success('Application submitted successfully!');
       navigate('/dashboard/user');
-    } catch (error) {
-      toast.error('Failed to submit application');
+    } catch (error: any) {
+      console.error('Error submitting application:', error);
+      toast.error(error.message || 'Failed to submit application');
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [e.target.name]: e.target.value
+      [name]: value
     }));
+    
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen flex items-center justify-center bg-secondary-50 dark:bg-secondary-900">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full"
+        />
       </div>
     );
   }
 
   if (!service) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Service not found</h2>
-          <p className="text-gray-600">The requested service could not be found.</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-secondary-50 dark:bg-secondary-900">
+        <Card className="text-center p-8">
+          <AlertCircle className="mx-auto h-16 w-16 text-error-500 mb-4" />
+          <h2 className="text-2xl font-bold text-secondary-900 dark:text-white mb-2">
+            Service Not Found
+          </h2>
+          <p className="text-secondary-600 dark:text-secondary-300 mb-6">
+            The requested service could not be found or is no longer available.
+          </p>
+          <Button onClick={() => navigate('/services')}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Services
+          </Button>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-secondary-50 dark:bg-secondary-900 py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Back Button */}
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5 }}
+          className="mb-6"
+        >
+          <Button
+            variant="ghost"
+            onClick={() => navigate('/services')}
+            className="group"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" />
+            Back to Services
+          </Button>
+        </motion.div>
+
         {/* Service Details */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">{service.title}</h1>
-          <p className="text-gray-600 mb-6">{service.description}</p>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div className="flex items-center space-x-3">
-              <IndianRupee className="w-5 h-5 text-blue-600" />
-              <div>
-                <p className="text-sm text-gray-500">Application Fee</p>
-                <p className="font-semibold">₹{service.fee}</p>
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-3">
-              <FileText className="w-5 h-5 text-blue-600" />
-              <div>
-                <p className="text-sm text-gray-500">Required Documents</p>
-                <p className="font-semibold">{service.requiredDocuments.length} documents</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Required Documents */}
-          <div className="border-t pt-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">Required Documents</h3>
-            <ul className="space-y-2">
-              {service.requiredDocuments.map((doc, index) => (
-                <li key={index} className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                  <span className="text-gray-700">{doc}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-
-        {/* Application Form */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">Application Form</h2>
-          
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-            <div className="flex items-start space-x-3">
-              <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
-              <div>
-                <h4 className="text-sm font-medium text-blue-900">Important Information</h4>
-                <p className="text-sm text-blue-700 mt-1">
-                  Please ensure all information is accurate. You will need to upload the required 
-                  documents during the verification process.
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="mb-8"
+        >
+          <Card>
+            <div className="flex items-start justify-between mb-6">
+              <div className="flex-1">
+                <h1 className="text-3xl font-bold text-secondary-900 dark:text-white mb-4">
+                  {service.title}
+                </h1>
+                <p className="text-secondary-600 dark:text-secondary-300 text-lg leading-relaxed">
+                  {service.description}
                 </p>
               </div>
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200 ml-6 whitespace-nowrap">
+                {service.category}
+              </span>
             </div>
-          </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              <div className="flex items-center space-x-3 p-4 bg-success-50 dark:bg-success-900/20 rounded-xl">
+                <div className="w-10 h-10 bg-success-100 dark:bg-success-900/40 rounded-lg flex items-center justify-center">
+                  <IndianRupee className="w-5 h-5 text-success-600 dark:text-success-400" />
+                </div>
+                <div>
+                  <p className="text-sm text-success-600 dark:text-success-400 font-medium">Application Fee</p>
+                  <p className="text-xl font-bold text-success-800 dark:text-success-300">₹{service.fee}</p>
+                </div>
+              </div>
+              
+              <div className="flex items-center space-x-3 p-4 bg-primary-50 dark:bg-primary-900/20 rounded-xl">
+                <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900/40 rounded-lg flex items-center justify-center">
+                  <FileText className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+                </div>
+                <div>
+                  <p className="text-sm text-primary-600 dark:text-primary-400 font-medium">Required Documents</p>
+                  <p className="text-xl font-bold text-primary-800 dark:text-primary-300">{service.requiredDocuments.length} documents</p>
+                </div>
+              </div>
+            </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Personal Information */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Full Name *
-                </label>
-                <input
+            {/* Required Documents */}
+            <div className="border-t border-secondary-200 dark:border-secondary-700 pt-6">
+              <h3 className="text-lg font-semibold text-secondary-900 dark:text-white mb-4">Required Documents</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {service.requiredDocuments.map((doc, index) => (
+                  <div key={index} className="flex items-center space-x-3 p-3 bg-secondary-50 dark:bg-secondary-800 rounded-lg">
+                    <CheckCircle className="w-5 h-5 text-success-600 dark:text-success-400 flex-shrink-0" />
+                    <span className="text-secondary-700 dark:text-secondary-300">{doc}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Card>
+        </motion.div>
+
+        {/* Application Form */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+        >
+          <Card>
+            <h2 className="text-2xl font-semibold text-secondary-900 dark:text-white mb-6">Application Form</h2>
+            
+            <div className="bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-xl p-4 mb-8">
+              <div className="flex items-start space-x-3">
+                <AlertCircle className="w-5 h-5 text-primary-600 dark:text-primary-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <h4 className="text-sm font-medium text-primary-900 dark:text-primary-100">Important Information</h4>
+                  <p className="text-sm text-primary-700 dark:text-primary-300 mt-1">
+                    Please ensure all information is accurate. You will need to upload the required 
+                    documents during the verification process. Processing typically takes 3-5 business days.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Personal Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Input
+                  label="Full Name *"
                   type="text"
                   name="fullName"
-                  required
                   value={formData.fullName || ''}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Enter your full name"
+                  error={errors.fullName}
+                  required
                 />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Phone Number *
-                </label>
-                <input
+                
+                <Input
+                  label="Phone Number *"
                   type="tel"
                   name="phoneNumber"
-                  required
                   value={formData.phoneNumber || ''}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Enter your phone number"
+                  error={errors.phoneNumber}
+                  required
                 />
               </div>
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Address *
-              </label>
-              <textarea
-                name="address"
-                required
-                rows={3}
-                value={formData.address || ''}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Enter your complete address"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Reason for Application *
-              </label>
-              <textarea
-                name="reason"
-                required
-                rows={4}
-                value={formData.reason || ''}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Explain why you need this service"
-              />
-            </div>
-
-            {/* Additional Fields based on service type */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Aadhar Number *
+                <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-300 mb-2">
+                  Address *
                 </label>
-                <input
+                <textarea
+                  name="address"
+                  rows={3}
+                  value={formData.address || ''}
+                  onChange={handleChange}
+                  className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 ${
+                    errors.address
+                      ? 'border-error-500 focus:border-error-500 focus:ring-error-500'
+                      : 'border-secondary-200 dark:border-secondary-700 focus:border-primary-500 focus:ring-primary-500'
+                  } bg-white dark:bg-secondary-800 text-secondary-900 dark:text-secondary-100 placeholder-secondary-500 dark:placeholder-secondary-400 focus:ring-2 focus:ring-opacity-20`}
+                  placeholder="Enter your complete address"
+                  required
+                />
+                {errors.address && (
+                  <p className="text-sm text-error-600 dark:text-error-400 mt-1">{errors.address}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-300 mb-2">
+                  Reason for Application *
+                </label>
+                <textarea
+                  name="reason"
+                  rows={4}
+                  value={formData.reason || ''}
+                  onChange={handleChange}
+                  className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 ${
+                    errors.reason
+                      ? 'border-error-500 focus:border-error-500 focus:ring-error-500'
+                      : 'border-secondary-200 dark:border-secondary-700 focus:border-primary-500 focus:ring-primary-500'
+                  } bg-white dark:bg-secondary-800 text-secondary-900 dark:text-secondary-100 placeholder-secondary-500 dark:placeholder-secondary-400 focus:ring-2 focus:ring-opacity-20`}
+                  placeholder="Explain why you need this service"
+                  required
+                />
+                {errors.reason && (
+                  <p className="text-sm text-error-600 dark:text-error-400 mt-1">{errors.reason}</p>
+                )}
+              </div>
+
+              {/* Additional Fields */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Input
+                  label="Aadhar Number *"
                   type="text"
                   name="aadharNumber"
-                  required
                   value={formData.aadharNumber || ''}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Enter your Aadhar number"
+                  error={errors.aadharNumber}
+                  required
                 />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Date of Birth *
-                </label>
-                <input
+                
+                <Input
+                  label="Date of Birth *"
                   type="date"
                   name="dateOfBirth"
-                  required
                   value={formData.dateOfBirth || ''}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  error={errors.dateOfBirth}
+                  required
                 />
               </div>
-            </div>
 
-            <div className="flex items-center space-x-3">
-              <input
-                type="checkbox"
-                id="declaration"
-                required
-                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-              />
-              <label htmlFor="declaration" className="text-sm text-gray-700">
-                I declare that all the information provided is true and accurate. I understand 
-                that providing false information may result in rejection of my application.
-              </label>
-            </div>
+              <div className="flex items-start space-x-3 p-4 bg-secondary-50 dark:bg-secondary-800 rounded-xl">
+                <input
+                  type="checkbox"
+                  id="declaration"
+                  required
+                  className="w-4 h-4 text-primary-600 border-secondary-300 rounded focus:ring-primary-500 focus:ring-2 mt-1"
+                />
+                <label htmlFor="declaration" className="text-sm text-secondary-700 dark:text-secondary-300">
+                  I declare that all the information provided is true and accurate. I understand 
+                  that providing false information may result in rejection of my application and 
+                  may have legal consequences.
+                </label>
+              </div>
 
-            <div className="flex flex-col sm:flex-row gap-4 pt-6">
-              <button
-                type="button"
-                onClick={() => navigate('/services')}
-                className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={submitting}
-                className="flex-1 sm:flex-none px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {submitting ? 'Submitting...' : 'Submit Application'}
-              </button>
-            </div>
-          </form>
-        </div>
+              <div className="flex flex-col sm:flex-row gap-4 pt-6">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => navigate('/services')}
+                  className="sm:w-auto"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  loading={submitting}
+                  className="flex-1 sm:flex-none group"
+                >
+                  {submitting ? 'Submitting Application...' : 'Submit Application'}
+                  {!submitting && (
+                    <motion.span
+                      className="ml-2 inline-block"
+                      whileHover={{ x: 5 }}
+                      transition={{ type: "spring", stiffness: 400, damping: 10 }}
+                    >
+                      →
+                    </motion.span>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </Card>
+        </motion.div>
       </div>
     </div>
   );
