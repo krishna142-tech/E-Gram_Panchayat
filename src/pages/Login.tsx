@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle } from 'lucide-react';
 import { signInUser } from '../services/auth';
@@ -16,6 +16,10 @@ const Login: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Get the intended destination from location state
+  const from = location.state?.from?.pathname || '/';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,7 +28,9 @@ const Login: React.FC = () => {
     try {
       await signInUser(formData.email, formData.password);
       toast.success('Welcome back!');
-      navigate('/');
+      
+      // Redirect to the intended destination or home
+      navigate(from, { replace: true });
     } catch (error: any) {
       console.error('Login error:', error);
       toast.error(error.message || 'Login failed');
@@ -47,7 +53,7 @@ const Login: React.FC = () => {
     try {
       await signInUser(email, password);
       toast.success('Demo login successful!');
-      navigate('/');
+      navigate(from, { replace: true });
     } catch (error: any) {
       console.error('Demo login error:', error);
       toast.error(error.message || 'Demo login failed');
@@ -100,6 +106,23 @@ const Login: React.FC = () => {
             >
               Sign in to access your account
             </motion.p>
+
+            {/* Show message if redirected from protected route */}
+            {from !== '/' && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.5 }}
+                className="mt-4 p-3 bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-800 rounded-lg"
+              >
+                <div className="flex items-center space-x-2">
+                  <AlertCircle className="w-4 h-4 text-warning-600 dark:text-warning-400" />
+                  <p className="text-sm text-warning-800 dark:text-warning-200">
+                    Please sign in to continue
+                  </p>
+                </div>
+              </motion.div>
+            )}
           </div>
 
           {/* Form */}

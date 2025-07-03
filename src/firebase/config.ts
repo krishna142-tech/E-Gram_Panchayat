@@ -1,7 +1,7 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
-import { getFunctions } from 'firebase/functions';
+import { getAuth, connectAuthEmulator } from 'firebase/auth';
+import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
+import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
 
 const firebaseConfig = {
   apiKey: "AIzaSyC7JlrcphyQyBESZqinfRTtx-uEXro1EOs",
@@ -20,5 +20,24 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const functions = getFunctions(app);
+
+// Configure auth persistence
+auth.setPersistence = auth.setPersistence || (() => Promise.resolve());
+
+// Connect to emulators in development (optional)
+if (import.meta.env.DEV && !auth.emulatorConfig) {
+  try {
+    // Only connect to emulators if they're not already connected
+    // and if the environment variables are set
+    if (import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true') {
+      connectAuthEmulator(auth, 'http://localhost:9099');
+      connectFirestoreEmulator(db, 'localhost', 8080);
+      connectFunctionsEmulator(functions, 'localhost', 5001);
+    }
+  } catch (error) {
+    // Emulators might already be connected, ignore the error
+    console.log('Firebase emulators already connected or not available');
+  }
+}
 
 export default app;

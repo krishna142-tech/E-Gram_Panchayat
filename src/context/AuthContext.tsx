@@ -26,7 +26,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchUserData = async (uid: string) => {
+  const fetchUserData = async (uid: string): Promise<User | null> => {
     try {
       const userDoc = await getDoc(doc(db, 'users', uid));
       if (userDoc.exists()) {
@@ -34,8 +34,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return {
           uid,
           ...userData,
-          createdAt: userData.createdAt?.toDate(),
-          updatedAt: userData.updatedAt?.toDate(),
+          createdAt: userData.createdAt?.toDate() || new Date(),
+          updatedAt: userData.updatedAt?.toDate() || new Date(),
         } as User;
       }
       return null;
@@ -67,13 +67,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        const userData = await fetchUserData(firebaseUser.uid);
-        setUser(userData);
-      } else {
+      try {
+        if (firebaseUser) {
+          // User is signed in
+          const userData = await fetchUserData(firebaseUser.uid);
+          setUser(userData);
+        } else {
+          // User is signed out
+          setUser(null);
+        }
+      } catch (error) {
+        console.error('Error in auth state change:', error);
         setUser(null);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return unsubscribe;
