@@ -198,6 +198,9 @@ const UserDashboard: React.FC = () => {
                       <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 dark:text-secondary-400 uppercase tracking-wider">
                         Remarks
                       </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 dark:text-secondary-400 uppercase tracking-wider">
+                        Documents
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-secondary-800 divide-y divide-secondary-200 dark:divide-secondary-700">
