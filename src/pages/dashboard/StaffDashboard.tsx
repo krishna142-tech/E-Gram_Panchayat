@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, Clock, Users, Eye, RefreshCw, Filter } from 'lucide-react';
+import { FileText, Clock, Users, Eye, RefreshCw, Filter, File } from 'lucide-react';
 import { getAllApplications, updateApplicationStatus } from '../../services/applications';
 import { useAuth } from '../../context/AuthContext';
 import { Application } from '../../types';
@@ -331,7 +331,7 @@ const StaffDashboard: React.FC = () => {
                         <div className="ml-4 mt-1 space-y-1">
                           {files.map((file: any, index: number) => (
                             <div key={index} className="flex items-center space-x-2 text-secondary-600 dark:text-secondary-300">
-                              <FileText className="w-4 h-4" />
+                              <File className="w-4 h-4" />
                               <span>{file.name}</span>
                               <span className="text-xs">({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
                             </div>
