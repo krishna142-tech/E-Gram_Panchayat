@@ -718,10 +718,14 @@ const AdminDashboard: React.FC = () => {
             {selectedApplication.formData.uploadedDocuments && (
               <div>
                 <h4 className="font-medium text-secondary-900 dark:text-white mb-2">Uploaded Documents</h4>
-                <div className="bg-secondary-50 dark:bg-secondary-800 rounded-lg p-4 mb-4">
+                <div className="bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-800 rounded-lg p-4 mb-4">
                   <p className="text-sm text-secondary-600 dark:text-secondary-300">
-                    <strong>Note:</strong> Files are stored locally in browser storage. If files show as "not found", 
-                    they may have been cleared from browser storage or uploaded from a different session.
+                    <strong>Important:</strong> Files are stored locally in browser storage for this demo. 
+                    If files show as "not found", they may have been cleared from browser storage, 
+                    uploaded from a different session, or the browser storage may be full.
+                  </p>
+                  <p className="text-xs text-warning-700 dark:text-warning-300 mt-2">
+                    In a production environment, files would be stored in cloud storage (Firebase Storage, AWS S3, etc.)
                   </p>
                 </div>
                 <div className="space-y-4">
@@ -729,13 +733,13 @@ const AdminDashboard: React.FC = () => {
                     <div key={key} className="space-y-2">
                       <h5 className="text-sm font-semibold text-secondary-900 dark:text-secondary-100 mb-3 flex items-center">
                         <File className="w-4 h-4 mr-2 text-primary-600 dark:text-primary-400" />
-                        Document {parseInt(key.replace('document_', '')) + 1}
+                        Document {parseInt(key.replace('document_', '')) + 1} ({(files as any[]).length} file{(files as any[]).length !== 1 ? 's' : ''})
                       </h5>
                       <div className="space-y-2">
                         {(files as any[]).map((file: any, index: number) => (
                           <DocumentViewer
                             key={index}
-                            fileId={file.url || ''}
+                            fileId={file.url || file.id || ''}
                             fileName={file.name || 'Unknown file'}
                             fileSize={file.size || 0}
                             fileType={file.type || 'application/octet-stream'}
@@ -745,6 +749,31 @@ const AdminDashboard: React.FC = () => {
                     </div>
                   ))}
                 </div>
+                
+                {/* Debug Information for Development */}
+                {import.meta.env.DEV && (
+                  <div className="mt-4 p-3 bg-secondary-100 dark:bg-secondary-800 rounded-lg">
+                    <details className="text-xs">
+                      <summary className="cursor-pointer text-secondary-600 dark:text-secondary-400 font-medium">
+                        Debug Information (Development Only)
+                      </summary>
+                      <div className="mt-2 space-y-1 text-secondary-500 dark:text-secondary-400">
+                        <p>Application ID: {selectedApplication.id}</p>
+                        <p>Total Documents: {Object.keys(selectedApplication.formData.uploadedDocuments).length}</p>
+                        {Object.entries(selectedApplication.formData.uploadedDocuments).map(([key, files]) => (
+                          <div key={key} className="ml-2">
+                            <p>{key}: {(files as any[]).length} files</p>
+                            {(files as any[]).map((file: any, index: number) => (
+                              <p key={index} className="ml-4 text-xs">
+                                - {file.name} (ID: {file.url || file.id || 'No ID'})
+                              </p>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  </div>
+                )}
               </div>
             )}
             

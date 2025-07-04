@@ -322,10 +322,14 @@ const StaffDashboard: React.FC = () => {
             {selectedApplication.formData.uploadedDocuments && (
               <div>
                 <h4 className="font-medium text-secondary-900 dark:text-white mb-2">Uploaded Documents</h4>
-                <div className="bg-secondary-50 dark:bg-secondary-800 rounded-lg p-4 mb-4">
+                <div className="bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-800 rounded-lg p-4 mb-4">
                   <p className="text-sm text-secondary-600 dark:text-secondary-300">
-                    <strong>Note:</strong> Files are stored locally in browser storage. If files show as "not found", 
-                    they may have been cleared from browser storage or uploaded from a different session.
+                    <strong>Important:</strong> Files are stored locally in browser storage for this demo. 
+                    If files show as "not found", they may have been cleared from browser storage, 
+                    uploaded from a different session, or the browser storage may be full.
+                  </p>
+                  <p className="text-xs text-warning-700 dark:text-warning-300 mt-2">
+                    In a production environment, files would be stored in cloud storage (Firebase Storage, AWS S3, etc.)
                   </p>
                 </div>
                 <div className="space-y-4">
@@ -333,13 +337,13 @@ const StaffDashboard: React.FC = () => {
                       <div key={key} className="space-y-2">
                         <h5 className="text-sm font-semibold text-secondary-900 dark:text-secondary-100 mb-3 flex items-center">
                           <File className="w-4 h-4 mr-2 text-primary-600 dark:text-primary-400" />
-                          Document {parseInt(key.replace('document_', '')) + 1}
+                          Document {parseInt(key.replace('document_', '')) + 1} ({(files as any[]).length} file{(files as any[]).length !== 1 ? 's' : ''})
                         </h5>
                         <div className="space-y-2">
-                          {files.map((file: any, index: number) => (
+                          {(files as any[]).map((file: any, index: number) => (
                             <DocumentViewer
                               key={index}
-                              fileId={file.url || ''}
+                              fileId={file.url || file.id || ''}
                               fileName={file.name || 'Unknown file'}
                               fileSize={file.size || 0}
                               fileType={file.type || 'application/octet-stream'}

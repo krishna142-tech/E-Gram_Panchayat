@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Download, Eye, File, Image, FileText, AlertCircle, RefreshCw } from 'lucide-react';
-import { downloadFile, getFileData, fileExists } from '../../services/fileStorage';
+import { Download, Eye, File, Image, FileText, AlertCircle, RefreshCw, HelpCircle } from 'lucide-react';
+import { downloadFile, getFileData, fileExists, isValidFileId, safeFileOperation } from '../../services/fileStorage';
 import Button from './Button';
 import Modal from './Modal';
 import toast from 'react-hot-toast';
@@ -24,7 +24,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
   const [isViewerOpen, setIsViewerOpen] = useState(false);
   const [fileData, setFileData] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [fileNotFound, setFileNotFound] = useState(false);
+  const [fileStatus, setFileStatus] = useState<'unknown' | 'found' | 'not_found' | 'invalid_id' | 'corrupted'>('unknown');
 
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 Bytes';
@@ -43,38 +43,73 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
     return File;
   };
 
-  const checkFileExists = () => {
-    if (!fileId || fileId === 'undefined' || fileId === 'null') {
-      setFileNotFound(true);
-      return false;
+  const checkFileStatus = () => {
+    if (!isValidFileId(fileId)) {
+      setFileStatus('invalid_id');
+      return 'invalid_id';
     }
-    
-    const exists = fileExists(fileId);
-    setFileNotFound(!exists);
-    return exists;
+
+    const exists = safeFileOperation(
+      () => fileExists(fileId),
+      false,
+      `Error checking file existence for ${fileId}`
+    );
+
+    if (exists) {
+      // Double-check by trying to get metadata
+      const data = safeFileOperation(
+        () => getFileData(fileId),
+        null,
+        `Error getting file data for ${fileId}`
+      );
+      
+      if (data && data.data) {
+        setFileStatus('found');
+        return 'found';
+      } else {
+        setFileStatus('corrupted');
+        return 'corrupted';
+      }
+    } else {
+      setFileStatus('not_found');
+      return 'not_found';
+    }
   };
 
   const handleView = async () => {
     setLoading(true);
     try {
-      if (!checkFileExists()) {
-        toast.error('File not found. It may have been removed or corrupted.');
+      const status = checkFileStatus();
+      
+      if (status !== 'found') {
+        const errorMessages = {
+          invalid_id: 'Invalid file reference',
+          not_found: 'File not found in storage',
+          corrupted: 'File data is corrupted',
+          unknown: 'Unknown file error'
+        };
+        toast.error(errorMessages[status] || 'Failed to load file');
         setLoading(false);
         return;
       }
 
-      const data = getFileData(fileId);
-      if (data) {
+      const data = safeFileOperation(
+        () => getFileData(fileId),
+        null,
+        `Error loading file data for ${fileId}`
+      );
+
+      if (data && data.data) {
         setFileData(data.data);
         setIsViewerOpen(true);
-        setFileNotFound(false);
+        setFileStatus('found');
       } else {
-        setFileNotFound(true);
-        toast.error('File not found or corrupted');
+        setFileStatus('corrupted');
+        toast.error('File data is corrupted or incomplete');
       }
     } catch (error) {
       console.error('Error loading file:', error);
-      setFileNotFound(true);
+      setFileStatus('not_found');
       toast.error('Failed to load file');
     } finally {
       setLoading(false);
@@ -83,105 +118,143 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
 
   const handleDownload = () => {
     try {
-      if (!checkFileExists()) {
-        toast.error('File not found. It may have been removed or corrupted.');
+      const status = checkFileStatus();
+      
+      if (status !== 'found') {
+        const errorMessages = {
+          invalid_id: 'Invalid file reference - cannot download',
+          not_found: 'File not found in storage',
+          corrupted: 'File data is corrupted',
+          unknown: 'Unknown file error'
+        };
+        toast.error(errorMessages[status] || 'Cannot download file');
         return;
       }
 
-      downloadFile(fileId);
-      toast.success('File downloaded successfully');
-      setFileNotFound(false);
+      safeFileOperation(
+        () => {
+          downloadFile(fileId);
+          toast.success('File downloaded successfully');
+          setFileStatus('found');
+        },
+        undefined,
+        `Error downloading file ${fileId}`
+      );
     } catch (error) {
       console.error('Error downloading file:', error);
-      setFileNotFound(true);
+      setFileStatus('not_found');
       toast.error('Failed to download file');
     }
   };
 
   const handleRetry = () => {
-    setFileNotFound(false);
-    checkFileExists();
+    setFileStatus('unknown');
+    checkFileStatus();
   };
 
-  // Check if file exists on component mount
-  React.useEffect(() => {
-    checkFileExists();
+  // Check file status on component mount and when fileId changes
+  useEffect(() => {
+    if (fileId) {
+      checkFileStatus();
+    } else {
+      setFileStatus('invalid_id');
+    }
   }, [fileId]);
 
   const canPreview = fileType.startsWith('image/') || fileType.includes('pdf');
   const FileIcon = getFileIcon();
 
-  // If no valid fileId, show placeholder
-  if (!fileId || fileId === 'undefined' || fileId === 'null') {
-    return (
-      <div className={`flex items-center justify-between p-4 border border-secondary-200 dark:border-secondary-700 rounded-lg bg-secondary-50 dark:bg-secondary-800 ${className}`}>
-        <div className="flex items-center space-x-3 flex-1 min-w-0">
-          <div className="w-10 h-10 bg-secondary-200 dark:bg-secondary-700 rounded-lg flex items-center justify-center flex-shrink-0">
-            <File className="w-5 h-5 text-secondary-400" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-secondary-600 dark:text-secondary-400 truncate">
-              {fileName || 'Unknown file'}
-            </p>
-            <div className="flex items-center space-x-2 text-xs text-secondary-500 dark:text-secondary-400">
-              <span>{formatFileSize(fileSize || 0)}</span>
-              <span>•</span>
-              <span className="text-warning-600 dark:text-warning-400">File reference missing</span>
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center space-x-2 ml-3">
-          <span className="text-xs text-secondary-500 dark:text-secondary-400 px-2 py-1 bg-secondary-200 dark:bg-secondary-700 rounded">
-            No file ID
-          </span>
-        </div>
-      </div>
-    );
-  }
+  // Get status display info
+  const getStatusInfo = () => {
+    switch (fileStatus) {
+      case 'found':
+        return {
+          bgColor: 'bg-white dark:bg-secondary-800 hover:shadow-soft',
+          iconBg: 'bg-primary-100 dark:bg-primary-900/40',
+          iconColor: 'text-primary-600 dark:text-primary-400',
+          textColor: 'text-secondary-900 dark:text-secondary-100',
+          subtextColor: 'text-secondary-500 dark:text-secondary-400',
+          statusText: '',
+          showActions: true
+        };
+      case 'not_found':
+        return {
+          bgColor: 'bg-error-50 dark:bg-error-900/20 border-error-200 dark:border-error-800',
+          iconBg: 'bg-error-100 dark:bg-error-900/40',
+          iconColor: 'text-error-600 dark:text-error-400',
+          textColor: 'text-error-900 dark:text-error-100',
+          subtextColor: 'text-error-600 dark:text-error-400',
+          statusText: 'File not found',
+          showActions: false
+        };
+      case 'corrupted':
+        return {
+          bgColor: 'bg-warning-50 dark:bg-warning-900/20 border-warning-200 dark:border-warning-800',
+          iconBg: 'bg-warning-100 dark:bg-warning-900/40',
+          iconColor: 'text-warning-600 dark:text-warning-400',
+          textColor: 'text-warning-900 dark:text-warning-100',
+          subtextColor: 'text-warning-600 dark:text-warning-400',
+          statusText: 'File corrupted',
+          showActions: false
+        };
+      case 'invalid_id':
+        return {
+          bgColor: 'bg-secondary-50 dark:bg-secondary-800',
+          iconBg: 'bg-secondary-200 dark:bg-secondary-700',
+          iconColor: 'text-secondary-400',
+          textColor: 'text-secondary-600 dark:text-secondary-400',
+          subtextColor: 'text-secondary-500 dark:text-secondary-400',
+          statusText: 'Invalid file reference',
+          showActions: false
+        };
+      default:
+        return {
+          bgColor: 'bg-secondary-50 dark:bg-secondary-800',
+          iconBg: 'bg-secondary-200 dark:bg-secondary-700',
+          iconColor: 'text-secondary-400',
+          textColor: 'text-secondary-600 dark:text-secondary-400',
+          subtextColor: 'text-secondary-500 dark:text-secondary-400',
+          statusText: 'Checking...',
+          showActions: false
+        };
+    }
+  };
+
+  const statusInfo = getStatusInfo();
 
   return (
     <>
       <motion.div 
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`flex items-center justify-between p-4 border border-secondary-200 dark:border-secondary-700 rounded-lg transition-all duration-200 ${
-          fileNotFound 
-            ? 'bg-error-50 dark:bg-error-900/20 border-error-200 dark:border-error-800' 
-            : 'bg-white dark:bg-secondary-800 hover:shadow-soft'
-        } ${className}`}
+        className={`flex items-center justify-between p-4 border border-secondary-200 dark:border-secondary-700 rounded-lg transition-all duration-200 ${statusInfo.bgColor} ${className}`}
       >
         <div className="flex items-center space-x-3 flex-1 min-w-0">
-          <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
-            fileNotFound 
-              ? 'bg-error-100 dark:bg-error-900/40' 
-              : 'bg-primary-100 dark:bg-primary-900/40'
-          }`}>
-            {fileNotFound ? (
-              <AlertCircle className="w-5 h-5 text-error-600 dark:text-error-400" />
+          <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${statusInfo.iconBg}`}>
+            {fileStatus === 'not_found' || fileStatus === 'corrupted' ? (
+              <AlertCircle className={`w-5 h-5 ${statusInfo.iconColor}`} />
+            ) : fileStatus === 'invalid_id' ? (
+              <HelpCircle className={`w-5 h-5 ${statusInfo.iconColor}`} />
             ) : (
-              <FileIcon className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+              <FileIcon className={`w-5 h-5 ${statusInfo.iconColor}`} />
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <p className={`text-sm font-medium truncate ${
-              fileNotFound 
-                ? 'text-error-900 dark:text-error-100' 
-                : 'text-secondary-900 dark:text-secondary-100'
-            }`}>
-              {fileName}
+            <p className={`text-sm font-medium truncate ${statusInfo.textColor}`}>
+              {fileName || 'Unknown file'}
             </p>
-            <div className={`flex items-center space-x-2 text-xs ${
-              fileNotFound 
-                ? 'text-error-600 dark:text-error-400' 
-                : 'text-secondary-500 dark:text-secondary-400'
-            }`}>
-              <span>{formatFileSize(fileSize)}</span>
-              <span>•</span>
-              <span className="uppercase">{fileType.split('/')[1] || 'file'}</span>
-              {fileNotFound && (
+            <div className={`flex items-center space-x-2 text-xs ${statusInfo.subtextColor}`}>
+              <span>{formatFileSize(fileSize || 0)}</span>
+              {fileType && (
                 <>
                   <span>•</span>
-                  <span className="text-error-600 dark:text-error-400 font-medium">File not found</span>
+                  <span className="uppercase">{fileType.split('/')[1] || 'file'}</span>
+                </>
+              )}
+              {statusInfo.statusText && (
+                <>
+                  <span>•</span>
+                  <span className="font-medium">{statusInfo.statusText}</span>
                 </>
               )}
             </div>
@@ -189,19 +262,29 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
         </div>
         
         <div className="flex items-center space-x-2 ml-3">
-          {fileNotFound ? (
+          {!statusInfo.showActions ? (
             <div className="flex items-center space-x-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleRetry}
-                className="p-2 hover:bg-error-100 dark:hover:bg-error-900/20 text-error-600 dark:text-error-400"
-                title="Retry"
-              >
-                <RefreshCw className="w-4 h-4" />
-              </Button>
-              <span className="text-xs text-error-600 dark:text-error-400 px-2 py-1 bg-error-100 dark:bg-error-900/20 rounded">
-                Missing
+              {fileStatus === 'not_found' && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleRetry}
+                  className="p-2 hover:bg-error-100 dark:hover:bg-error-900/20 text-error-600 dark:text-error-400"
+                  title="Retry"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                </Button>
+              )}
+              <span className={`text-xs px-2 py-1 rounded ${
+                fileStatus === 'not_found' 
+                  ? 'bg-error-100 dark:bg-error-900/20 text-error-600 dark:text-error-400'
+                  : fileStatus === 'corrupted'
+                  ? 'bg-warning-100 dark:bg-warning-900/20 text-warning-600 dark:text-warning-400'
+                  : 'bg-secondary-200 dark:bg-secondary-700 text-secondary-600 dark:text-secondary-400'
+              }`}>
+                {fileStatus === 'not_found' ? 'Missing' : 
+                 fileStatus === 'corrupted' ? 'Corrupted' : 
+                 fileStatus === 'invalid_id' ? 'Invalid' : 'Unknown'}
               </span>
             </div>
           ) : (
@@ -254,7 +337,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
                     style={{ maxHeight: '60vh' }}
                     onError={() => {
                       toast.error('Failed to load image preview');
-                      setFileNotFound(true);
+                      setFileStatus('corrupted');
                     }}
                   />
                 </div>
@@ -266,7 +349,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
                     title={fileName}
                     onError={() => {
                       toast.error('Failed to load PDF preview');
-                      setFileNotFound(true);
+                      setFileStatus('corrupted');
                     }}
                   />
                 </div>
@@ -308,7 +391,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
               >
                 Close
               </Button>
-              {!fileNotFound && (
+              {fileStatus === 'found' && (
                 <Button onClick={handleDownload} className="group">
                   <Download className="w-4 h-4 mr-2 group-hover:translate-y-0.5 transition-transform" />
                   Download

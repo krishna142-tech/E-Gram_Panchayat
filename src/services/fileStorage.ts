@@ -80,7 +80,7 @@ export const uploadFile = async (file: File): Promise<StoredFile> => {
 // Download/view file
 export const downloadFile = (fileId: string): void => {
   try {
-    if (!fileId || fileId === 'undefined' || fileId === 'null') {
+    if (!fileId || fileId === 'undefined' || fileId === 'null' || fileId.trim() === '') {
       throw new Error('Invalid file ID');
     }
 
@@ -91,29 +91,33 @@ export const downloadFile = (fileId: string): void => {
       // List available files for debugging
       const allKeys = Object.keys(localStorage).filter(key => key.startsWith('file_'));
       console.log('Available files:', allKeys);
-      throw new Error('File not found or has been removed');
+      throw new Error('File not found or has been removed from storage');
     }
     
     const fileData = JSON.parse(storedData);
     
+    if (!fileData.data) {
+      throw new Error('File data is corrupted');
+    }
+    
     // Create download link
     const link = document.createElement('a');
     link.href = fileData.data;
-    link.download = fileData.name;
+    link.download = fileData.name || 'download';
     link.style.display = 'none';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   } catch (error) {
     console.error('Error downloading file:', error);
-    throw new Error('Failed to download file');
+    throw new Error('Failed to download file: ' + (error as Error).message);
   }
 };
 
 // Get file for viewing
 export const getFileData = (fileId: string): { name: string; data: string; type: string; size: number } | null => {
   try {
-    if (!fileId || fileId === 'undefined' || fileId === 'null') {
+    if (!fileId || fileId === 'undefined' || fileId === 'null' || fileId.trim() === '') {
       console.error('Invalid file ID provided:', fileId);
       return null;
     }
@@ -121,38 +125,55 @@ export const getFileData = (fileId: string): { name: string; data: string; type:
     const storedData = localStorage.getItem(fileId);
     
     if (!storedData) {
-      console.error('File not found:', fileId);
+      console.error('File not found in storage:', fileId);
       // List all stored files for debugging
       const allKeys = Object.keys(localStorage).filter(key => key.startsWith('file_'));
-      console.log('Available files:', allKeys);
+      console.log('Available files in storage:', allKeys);
       return null;
     }
     
     const fileData = JSON.parse(storedData);
+    
+    if (!fileData.data) {
+      console.error('File data is corrupted for:', fileId);
+      return null;
+    }
+    
     return {
-      name: fileData.name,
+      name: fileData.name || 'Unknown file',
       data: fileData.data,
-      type: fileData.type,
-      size: fileData.size,
+      type: fileData.type || 'application/octet-stream',
+      size: fileData.size || 0,
     };
   } catch (error) {
-    console.error('Error parsing file data:', error);
+    console.error('Error parsing file data for:', fileId, error);
     return null;
   }
 };
 
 // Check if file exists
 export const fileExists = (fileId: string): boolean => {
-  if (!fileId || fileId === 'undefined' || fileId === 'null') {
+  if (!fileId || fileId === 'undefined' || fileId === 'null' || fileId.trim() === '') {
     return false;
   }
-  return localStorage.getItem(fileId) !== null;
+  
+  try {
+    const data = localStorage.getItem(fileId);
+    if (!data) return false;
+    
+    // Verify the data is valid JSON and has required fields
+    const parsed = JSON.parse(data);
+    return !!(parsed.name && parsed.data);
+  } catch (error) {
+    console.error('Error checking file existence:', fileId, error);
+    return false;
+  }
 };
 
 // Get file metadata without loading the full data
 export const getFileMetadata = (fileId: string): { name: string; type: string; size: number } | null => {
   try {
-    if (!fileId || fileId === 'undefined' || fileId === 'null') {
+    if (!fileId || fileId === 'undefined' || fileId === 'null' || fileId.trim() === '') {
       return null;
     }
 
@@ -164,9 +185,9 @@ export const getFileMetadata = (fileId: string): { name: string; type: string; s
     
     const fileData = JSON.parse(storedData);
     return {
-      name: fileData.name,
-      type: fileData.type,
-      size: fileData.size,
+      name: fileData.name || 'Unknown file',
+      type: fileData.type || 'application/octet-stream',
+      size: fileData.size || 0,
     };
   } catch (error) {
     console.error('Error getting file metadata:', error);
@@ -255,5 +276,29 @@ export const createDemoFile = async (fileName: string = 'demo.txt', content: str
   } catch (error) {
     console.error('Error creating demo file:', error);
     throw error;
+  }
+};
+
+// Validate file ID format
+export const isValidFileId = (fileId: string): boolean => {
+  if (!fileId || typeof fileId !== 'string') return false;
+  if (fileId === 'undefined' || fileId === 'null') return false;
+  if (fileId.trim() === '') return false;
+  
+  // Check if it matches our file ID pattern
+  return /^file_\d+_[a-z0-9]+$/.test(fileId);
+};
+
+// Safe file operation wrapper
+export const safeFileOperation = <T>(
+  operation: () => T,
+  fallback: T,
+  errorMessage: string = 'File operation failed'
+): T => {
+  try {
+    return operation();
+  } catch (error) {
+    console.error(errorMessage, error);
+    return fallback;
   }
 };

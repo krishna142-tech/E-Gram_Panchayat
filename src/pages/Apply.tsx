@@ -115,19 +115,32 @@ const Apply: React.FC = () => {
       // Upload files and get storage URLs
       const uploadedDocuments: Record<string, any> = {};
       
-      for (const [key, files] of Object.entries(uploadedFiles)) {
-        const uploadedFileData = [];
-        for (const file of files) {
-          const storedFile = await uploadFile(file);
-          uploadedFileData.push({
-            name: storedFile.name,
-            size: storedFile.size,
-            type: storedFile.type,
-            url: storedFile.url, // This is the file ID for retrieval
-            uploadedAt: storedFile.uploadedAt,
-          });
+      try {
+        for (const [key, files] of Object.entries(uploadedFiles)) {
+          const uploadedFileData = [];
+          for (const file of files) {
+            try {
+              const storedFile = await uploadFile(file);
+              uploadedFileData.push({
+                name: storedFile.name,
+                size: storedFile.size,
+                type: storedFile.type,
+                url: storedFile.url, // This is the file ID for retrieval
+                id: storedFile.url, // Alternative field name for compatibility
+                uploadedAt: storedFile.uploadedAt,
+              });
+            } catch (fileError) {
+              console.error(`Error uploading file ${file.name}:`, fileError);
+              toast.error(`Failed to upload ${file.name}. Please try again.`);
+              throw fileError;
+            }
+          }
+          uploadedDocuments[key] = uploadedFileData;
         }
-        uploadedDocuments[key] = uploadedFileData;
+      } catch (uploadError) {
+        console.error('Error uploading files:', uploadError);
+        setSubmitting(false);
+        return;
       }
 
       const applicationFormData = {
