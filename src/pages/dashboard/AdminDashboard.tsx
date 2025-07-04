@@ -210,7 +210,7 @@ const AdminDashboard: React.FC = () => {
                     placeholder="Search by service, email, or ID..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    icon={Search}
+                    icon={<Search className="w-5 h-5 text-secondary-400" />}
                   />
                 </div>
                 <div className="md:w-48">
