@@ -1,4 +1,99 @@
--transform duration-300" />
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { format } from 'date-fns';
+import { 
+  FileText, 
+  Clock, 
+  CheckCircle, 
+  XCircle, 
+  Plus, 
+  RefreshCw,
+  TrendingUp,
+  Users,
+  Calendar
+} from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { getApplicationsByUserId } from '../../services/applications';
+import { Application } from '../../types';
+import Card from '../../components/ui/Card';
+import Button from '../../components/ui/Button';
+import StatusBadge from '../../components/Common/StatusBadge';
+import LoadingSpinner from '../../components/Common/LoadingSpinner';
+
+const UserDashboard: React.FC = () => {
+  const { user } = useAuth();
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const stats = {
+    total: applications.length,
+    pending: applications.filter(app => app.status === 'pending').length,
+    underReview: applications.filter(app => app.status === 'under_review').length,
+    approved: applications.filter(app => app.status === 'approved').length,
+    rejected: applications.filter(app => app.status === 'rejected').length,
+  };
+
+  const loadApplications = async (isRefresh = false) => {
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+
+    try {
+      if (user?.uid) {
+        const userApplications = await getApplicationsByUserId(user.uid);
+        setApplications(userApplications);
+      }
+    } catch (error) {
+      console.error('Error loading applications:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    loadApplications();
+  }, [user]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-secondary-50 dark:from-secondary-900 dark:via-secondary-800 dark:to-secondary-900">
+      {/* Hero Section */}
+      <section className="relative overflow-hidden bg-gradient-to-r from-primary-600 to-primary-700 dark:from-primary-700 dark:to-primary-800">
+        <div className="absolute inset-0 bg-black/10"></div>
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="text-center"
+          >
+            <h1 className="text-4xl md:text-5xl font-bold text-white mb-6">
+              Welcome back, {user?.displayName || 'User'}!
+            </h1>
+            <p className="text-xl text-primary-100 mb-8 max-w-3xl mx-auto">
+              Track your applications, manage your profile, and access government services all in one place.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Button 
+                variant="secondary" 
+                size="lg"
+                onClick={() => loadApplications(true)}
+                loading={refreshing}
+                className="group"
+              >
+                <RefreshCw className="w-5 h-5 mr-2 group-hover:rotate-180 transition-transform duration-300" />
                 Refresh
               </Button>
               <Link to="/services">
