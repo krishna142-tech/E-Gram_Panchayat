@@ -13,15 +13,18 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../hooks/useTheme';
+import { useNotifications } from '../../hooks/useNotifications';
 import Button from '../ui/Button';
 import toast from 'react-hot-toast';
 
 const Header: React.FC = () => {
   const { user, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -114,12 +117,91 @@ const Header: React.FC = () => {
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
+                  onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
                   className="p-2 text-secondary-600 dark:text-secondary-400 hover:text-primary-600 dark:hover:text-primary-400 rounded-lg hover:bg-secondary-100 dark:hover:bg-secondary-800 transition-colors relative"
                 >
                   <Bell className="w-5 h-5" />
-                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-error-500 rounded-full"></span>
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-error-500 text-white text-xs rounded-full flex items-center justify-center font-medium">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
                 </motion.button>
 
+                {/* Notifications Dropdown */}
+                <AnimatePresence>
+                  {isNotificationsOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                      className="absolute right-0 mt-2 w-80 bg-white dark:bg-secondary-800 rounded-xl shadow-large border border-secondary-200 dark:border-secondary-700 py-2 z-50"
+                      style={{ top: '100%' }}
+                    >
+                      <div className="px-4 py-3 border-b border-secondary-200 dark:border-secondary-700">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-sm font-semibold text-secondary-900 dark:text-white">
+                            Notifications
+                          </h3>
+                          {unreadCount > 0 && (
+                            <button
+                              onClick={markAllAsRead}
+                              className="text-xs text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 transition-colors"
+                            >
+                              Mark all as read
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="max-h-80 overflow-y-auto">
+                        {notifications.length === 0 ? (
+                          <div className="px-4 py-8 text-center">
+                            <Bell className="w-8 h-8 text-secondary-400 mx-auto mb-2" />
+                            <p className="text-sm text-secondary-500 dark:text-secondary-400">
+                              No notifications yet
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="py-2">
+                            {notifications.map((notification) => (
+                              <div
+                                key={notification.id}
+                                className={`px-4 py-3 hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors cursor-pointer ${
+                                  !notification.read ? 'bg-primary-50 dark:bg-primary-900/20' : ''
+                                }`}
+                                onClick={() => {
+                                  markAsRead(notification.id);
+                                  if (notification.actionUrl) {
+                                    navigate(notification.actionUrl);
+                                    setIsNotificationsOpen(false);
+                                  }
+                                }}
+                              >
+                                <div className="flex items-start space-x-3">
+                                  <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
+                                    !notification.read ? 'bg-primary-600' : 'bg-transparent'
+                                  }`} />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-secondary-900 dark:text-white">
+                                      {notification.title}
+                                    </p>
+                                    <p className="text-xs text-secondary-600 dark:text-secondary-300 mt-1">
+                                      {notification.message}
+                                    </p>
+                                    <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-1">
+                                      {new Date(notification.createdAt).toLocaleDateString()}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
                 {/* Profile Dropdown */}
                 <div className="relative">
                   <motion.button

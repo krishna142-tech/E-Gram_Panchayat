@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle } from 'lucide-react';
+import { doc, getDoc } from 'firebase/firestore';
 import { signInUser } from '../services/auth';
+import { auth, db } from '../firebase/config';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Card from '../components/ui/Card';
@@ -29,8 +31,37 @@ const Login: React.FC = () => {
       await signInUser(formData.email, formData.password);
       toast.success('Welcome back!');
       
-      // Redirect to the intended destination or home
-      navigate(from, { replace: true });
+      // Get user data to determine redirect
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        // Get user role from Firestore
+        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          const userRole = userData.role;
+          
+          // Redirect based on role if coming from root, otherwise respect intended destination
+          if (from === '/') {
+            switch (userRole) {
+              case 'admin':
+                navigate('/dashboard/admin', { replace: true });
+                break;
+              case 'staff':
+                navigate('/dashboard/staff', { replace: true });
+                break;
+              default:
+                navigate('/dashboard/user', { replace: true });
+                break;
+            }
+          } else {
+            navigate(from, { replace: true });
+          }
+        } else {
+          navigate(from, { replace: true });
+        }
+      } else {
+        navigate(from, { replace: true });
+      }
     } catch (error: any) {
       console.error('Login error:', error);
       toast.error(error.message || 'Login failed');

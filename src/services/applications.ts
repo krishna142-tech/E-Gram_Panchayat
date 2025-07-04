@@ -1,6 +1,7 @@
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
   addDoc,
   updateDoc,
@@ -14,6 +15,7 @@ import {
 import { db } from '../firebase/config';
 import { Application } from '../types';
 import { logAction } from './logging';
+import { sendApplicationNotification } from './emailService';
 
 export const submitApplication = async (
   applicationData: Omit<Application, 'id' | 'submittedAt' | 'updatedAt' | 'status'>,
@@ -125,6 +127,10 @@ export const updateApplicationStatus = async (
   userId: string
 ): Promise<void> => {
   try {
+    // Get the application data first to send notification
+    const appDoc = await getDoc(doc(db, 'applications', id));
+    const appData = appDoc.data();
+    
     const docRef = doc(db, 'applications', id);
     await updateDoc(docRef, {
       status,
@@ -132,6 +138,23 @@ export const updateApplicationStatus = async (
       updatedAt: serverTimestamp(),
       updatedBy: userId,
     });
+    
+    // Send notification email if application data exists
+    if (appData) {
+      try {
+        await sendApplicationNotification({
+          to_name: appData.userName || 'User',
+          to_email: appData.userEmail || '',
+          service_name: appData.serviceName || 'Service',
+          application_id: id,
+          status: status,
+          remarks: remarks,
+        });
+      } catch (emailError) {
+        console.error('Failed to send notification email:', emailError);
+        // Don't throw error for email failures
+      }
+    }
     
     await logAction(userId, 'UPDATE_APPLICATION_STATUS', {
       applicationId: id,

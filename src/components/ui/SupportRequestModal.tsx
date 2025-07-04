@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { X, Send, User, Mail, Phone, MessageCircle } from 'lucide-react';
 import { sendSupportRequest } from '../../services/emailService';
+import { useNotifications } from '../../hooks/useNotifications';
 import Button from './Button';
 import Input from './Input';
 import toast from 'react-hot-toast';
@@ -24,6 +25,7 @@ const SupportRequestModal: React.FC<SupportRequestModalProps> = ({
     message: '',
   });
   const [sending, setSending] = useState(false);
+  const { addNotification } = useNotifications();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,6 +41,15 @@ const SupportRequestModal: React.FC<SupportRequestModalProps> = ({
       });
 
       toast.success('Support request sent successfully! We will contact you soon.');
+      
+      // Add notification
+      addNotification({
+        title: 'Support Request Sent',
+        message: `Your ${requestType} access request has been submitted. We will review it and contact you within 24-48 hours.`,
+        type: 'success',
+        read: false,
+      });
+      
       setFormData({ name: '', email: '', phone: '', message: '' });
       onClose();
     } catch (error: any) {
