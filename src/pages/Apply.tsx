@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FileText, IndianRupee, AlertCircle, CheckCircle, ArrowLeft } from 'lucide-react';
+import { FileText, IndianRupee, AlertCircle, CheckCircle, ArrowLeft, Upload } from 'lucide-react';
 import { getServiceById } from '../services/services';
 import { submitApplication } from '../services/applications';
 import { useAuth } from '../context/AuthContext';
@@ -9,6 +9,7 @@ import { Service } from '../types';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
+import FileUpload from '../components/ui/FileUpload';
 import toast from 'react-hot-toast';
 
 const Apply: React.FC = () => {
@@ -21,6 +22,8 @@ const Apply: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [uploadedFiles, setUploadedFiles] = useState<Record<string, File[]>>({});
+  const [fileErrors, setFileErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (serviceId) {
@@ -80,6 +83,16 @@ const Apply: React.FC = () => {
       newErrors.dateOfBirth = 'Date of birth is required';
     }
 
+    // Validate required documents
+    if (service?.requiredDocuments) {
+      service.requiredDocuments.forEach((doc, index) => {
+        const files = uploadedFiles[`document_${index}`] || [];
+        if (files.length === 0) {
+          newErrors[`document_${index}`] = `${doc} is required`;
+        }
+      });
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -97,13 +110,28 @@ const Apply: React.FC = () => {
     setSubmitting(true);
 
     try {
+      // Prepare form data with file information
+      const applicationFormData = {
+        ...formData,
+        uploadedDocuments: Object.entries(uploadedFiles).reduce((acc, [key, files]) => {
+          acc[key] = files.map(file => ({
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            // In a real application, you would upload files to storage and store URLs
+            // For now, we'll just store file metadata
+          }));
+          return acc;
+        }, {} as Record<string, any>)
+      };
+
       await submitApplication({
         serviceId: service.id,
         serviceName: service.title,
         userId: user.uid,
         userName: user.displayName,
         userEmail: user.email,
-        formData,
+        formData: applicationFormData,
       }, user.uid);
 
       toast.success('Application submitted successfully!');
@@ -128,6 +156,21 @@ const Apply: React.FC = () => {
       setErrors(prev => ({
         ...prev,
         [name]: ''
+      }));
+    }
+  };
+
+  const handleFileChange = (documentIndex: number, files: File[]) => {
+    setUploadedFiles(prev => ({
+      ...prev,
+      [`document_${documentIndex}`]: files
+    }));
+    
+    // Clear error when files are uploaded
+    if (files.length > 0 && fileErrors[`document_${documentIndex}`]) {
+      setFileErrors(prev => ({
+        ...prev,
+        [`document_${documentIndex}`]: ''
       }));
     }
   };
@@ -359,6 +402,43 @@ const Apply: React.FC = () => {
                 />
               </div>
 
+              {/* Document Upload Section */}
+              <div className="border-t border-secondary-200 dark:border-secondary-700 pt-8">
+                <h3 className="text-lg font-semibold text-secondary-900 dark:text-white mb-6 flex items-center">
+                  <Upload className="w-5 h-5 mr-2" />
+                  Upload Required Documents
+                </h3>
+                
+                <div className="bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-xl p-4 mb-6">
+                  <div className="flex items-start space-x-3">
+                    <AlertCircle className="w-5 h-5 text-primary-600 dark:text-primary-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <h4 className="text-sm font-medium text-primary-900 dark:text-primary-100">Document Upload Guidelines</h4>
+                      <ul className="text-sm text-primary-700 dark:text-primary-300 mt-1 space-y-1">
+                        <li>• Upload clear, readable copies of all required documents</li>
+                        <li>• Accepted formats: PDF, JPG, PNG, DOC, DOCX</li>
+                        <li>• Maximum file size: 5MB per document</li>
+                        <li>• Ensure all text and details are clearly visible</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  {service.requiredDocuments.map((document, index) => (
+                    <FileUpload
+                      key={index}
+                      label={document}
+                      onFilesChange={(files) => handleFileChange(index, files)}
+                      error={errors[`document_${index}`] || fileErrors[`document_${index}`]}
+                      required
+                      accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                      maxSize={5}
+                    />
+                  ))}
+                </div>
+              </div>
+
               <div className="flex items-start space-x-3 p-4 bg-secondary-50 dark:bg-secondary-800 rounded-xl">
                 <input
                   type="checkbox"
@@ -366,10 +446,11 @@ const Apply: React.FC = () => {
                   required
                   className="w-4 h-4 text-primary-600 border-secondary-300 rounded focus:ring-primary-500 focus:ring-2 mt-1"
                 />
-                <label htmlFor="declaration" className="text-sm text-secondary-700 dark:text-secondary-300">
+                <label htmlFor="declaration" className="text-sm text-secondary-600 dark:text-secondary-300">
                   I declare that all the information provided is true and accurate. I understand 
                   that providing false information may result in rejection of my application and 
-                  may have legal consequences.
+                  may have legal consequences. I confirm that all uploaded documents are authentic 
+                  and belong to me.
                 </label>
               </div>
 

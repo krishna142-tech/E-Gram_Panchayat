@@ -27,7 +27,14 @@ export interface Application {
   userName: string;
   userEmail: string;
   status: 'pending' | 'under-review' | 'approved' | 'rejected';
-  formData: Record<string, any>;
+  formData: Record<string, any> & {
+    uploadedDocuments?: Record<string, {
+      name: string;
+      size: number;
+      type: string;
+      url?: string;
+    }[]>;
+  };
   submittedAt: Date;
   updatedAt: Date;
   updatedBy?: string;

@@ -235,6 +235,15 @@ const UserDashboard: React.FC = () => {
                             <span className="text-secondary-400">-</span>
                           )}
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-secondary-900 dark:text-secondary-300">
+                          {application.formData.uploadedDocuments ? (
+                            <span className="text-success-600 dark:text-success-400">
+                              {Object.keys(application.formData.uploadedDocuments).length} files
+                            </span>
+                          ) : (
+                            <span className="text-secondary-400">No files</span>
+                          )}
+                        </td>
                       </motion.tr>
                     ))}
                   </tbody>
