@@ -8,6 +8,7 @@ import StatusBadge from '../../components/Common/StatusBadge';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
+import DocumentViewer from '../../components/ui/DocumentViewer';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 
@@ -321,25 +322,26 @@ const StaffDashboard: React.FC = () => {
             {selectedApplication.formData.uploadedDocuments && (
               <div>
                 <h4 className="font-medium text-secondary-900 dark:text-white mb-2">Uploaded Documents</h4>
-                <div className="bg-secondary-50 dark:bg-secondary-800 rounded-lg p-4">
-                  <div className="space-y-2">
+                <div className="space-y-4">
                     {Object.entries(selectedApplication.formData.uploadedDocuments).map(([key, files]) => (
-                      <div key={key} className="text-sm">
-                        <span className="font-medium text-secondary-900 dark:text-secondary-100">
-                          Document {key.replace('document_', '')}:
-                        </span>
-                        <div className="ml-4 mt-1 space-y-1">
+                      <div key={key} className="space-y-2">
+                        <h5 className="text-sm font-semibold text-secondary-900 dark:text-secondary-100 mb-3 flex items-center">
+                          <File className="w-4 h-4 mr-2 text-primary-600 dark:text-primary-400" />
+                          Document {parseInt(key.replace('document_', '')) + 1}
+                        </h5>
+                        <div className="space-y-2">
                           {files.map((file: any, index: number) => (
-                            <div key={index} className="flex items-center space-x-2 text-secondary-600 dark:text-secondary-300">
-                              <File className="w-4 h-4" />
-                              <span>{file.name}</span>
-                              <span className="text-xs">({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
-                            </div>
+                            <DocumentViewer
+                              key={index}
+                              fileId={file.url}
+                              fileName={file.name}
+                              fileSize={file.size}
+                              fileType={file.type}
+                            />
                           ))}
                         </div>
                       </div>
                     ))}
-                  </div>
                 </div>
               </div>
             )}

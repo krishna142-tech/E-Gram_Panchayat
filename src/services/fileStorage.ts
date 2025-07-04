@@ -26,13 +26,20 @@ export const uploadFile = async (file: File): Promise<StoredFile> => {
         uploadedAt: new Date(),
       };
       
-      // Store file data
-      localStorage.setItem(fileId, JSON.stringify({
+      // Store file data with metadata
+      const fileData = {
         ...storedFile,
         data: base64Data,
-      }));
+      };
       
-      resolve(storedFile);
+      try {
+        localStorage.setItem(fileId, JSON.stringify(fileData));
+        console.log('File stored successfully:', fileId);
+        resolve(storedFile);
+      } catch (error) {
+        console.error('Error storing file:', error);
+        reject(new Error('Failed to store file'));
+      }
     };
     
     reader.onerror = () => {
@@ -62,12 +69,41 @@ export const downloadFile = (fileId: string): void => {
     link.click();
     document.body.removeChild(link);
   } catch (error) {
+    console.error('Error downloading file:', error);
     throw new Error('Failed to download file');
   }
 };
 
 // Get file for viewing
-export const getFileData = (fileId: string): { name: string; data: string; type: string } | null => {
+export const getFileData = (fileId: string): { name: string; data: string; type: string; size: number } | null => {
+  const storedData = localStorage.getItem(fileId);
+  
+  if (!storedData) {
+    console.warn('File not found:', fileId);
+    return null;
+  }
+  
+  try {
+    const fileData = JSON.parse(storedData);
+    return {
+      name: fileData.name,
+      data: fileData.data,
+      type: fileData.type,
+      size: fileData.size,
+    };
+  } catch (error) {
+    console.error('Error parsing file data:', error);
+    return null;
+  }
+};
+
+// Check if file exists
+export const fileExists = (fileId: string): boolean => {
+  return localStorage.getItem(fileId) !== null;
+};
+
+// Get file metadata without loading the full data
+export const getFileMetadata = (fileId: string): { name: string; type: string; size: number } | null => {
   const storedData = localStorage.getItem(fileId);
   
   if (!storedData) {
@@ -78,15 +114,10 @@ export const getFileData = (fileId: string): { name: string; data: string; type:
     const fileData = JSON.parse(storedData);
     return {
       name: fileData.name,
-      data: fileData.data,
       type: fileData.type,
+      size: fileData.size,
     };
   } catch (error) {
     return null;
   }
-};
-
-// Check if file exists
-export const fileExists = (fileId: string): boolean => {
-  return localStorage.getItem(fileId) !== null;
 };

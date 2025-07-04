@@ -14,7 +14,8 @@ import {
   Eye,
   Edit,
   Trash2,
-  RefreshCw
+  RefreshCw,
+  File
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getAllApplications, updateApplicationStatus, deleteApplication } from '../../services/applications';
@@ -392,11 +393,12 @@ const AdminDashboard: React.FC = () => {
             {selectedApplication.formData.uploadedDocuments && (
               <div>
                 <h4 className="font-medium text-secondary-900 dark:text-white mb-2">Uploaded Documents</h4>
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {Object.entries(selectedApplication.formData.uploadedDocuments).map(([key, files]) => (
-                    <div key={key}>
-                      <h5 className="text-sm font-medium text-secondary-900 dark:text-secondary-100 mb-2">
-                        Required Document {parseInt(key.replace('document_', '')) + 1}
+                    <div key={key} className="space-y-2">
+                      <h5 className="text-sm font-semibold text-secondary-900 dark:text-secondary-100 mb-3 flex items-center">
+                        <File className="w-4 h-4 mr-2 text-primary-600 dark:text-primary-400" />
+                        Document {parseInt(key.replace('document_', '')) + 1}
                       </h5>
                       <div className="space-y-2">
                         {files.map((file: any, index: number) => (
