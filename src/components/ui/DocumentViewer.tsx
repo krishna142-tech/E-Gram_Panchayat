@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Download, Eye, File, Image, FileText, AlertCircle } from 'lucide-react';
-import { downloadFile, getFileData } from '../../services/fileStorage';
+import { Download, Eye, File, Image, FileText, AlertCircle, RefreshCw } from 'lucide-react';
+import { downloadFile, getFileData, fileExists } from '../../services/fileStorage';
 import Button from './Button';
 import Modal from './Modal';
 import toast from 'react-hot-toast';
@@ -24,6 +24,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
   const [isViewerOpen, setIsViewerOpen] = useState(false);
   const [fileData, setFileData] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [fileNotFound, setFileNotFound] = useState(false);
 
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 Bytes';
@@ -42,18 +43,33 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
     return File;
   };
 
+  const checkFileExists = () => {
+    const exists = fileExists(fileId);
+    setFileNotFound(!exists);
+    return exists;
+  };
+
   const handleView = async () => {
     setLoading(true);
     try {
+      if (!checkFileExists()) {
+        toast.error('File not found. It may have been removed or corrupted.');
+        setLoading(false);
+        return;
+      }
+
       const data = getFileData(fileId);
       if (data) {
         setFileData(data.data);
         setIsViewerOpen(true);
+        setFileNotFound(false);
       } else {
+        setFileNotFound(true);
         toast.error('File not found or corrupted');
       }
     } catch (error) {
       console.error('Error loading file:', error);
+      setFileNotFound(true);
       toast.error('Failed to load file');
     } finally {
       setLoading(false);
@@ -62,13 +78,30 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
 
   const handleDownload = () => {
     try {
+      if (!checkFileExists()) {
+        toast.error('File not found. It may have been removed or corrupted.');
+        return;
+      }
+
       downloadFile(fileId);
       toast.success('File downloaded successfully');
+      setFileNotFound(false);
     } catch (error) {
       console.error('Error downloading file:', error);
+      setFileNotFound(true);
       toast.error('Failed to download file');
     }
   };
+
+  const handleRetry = () => {
+    setFileNotFound(false);
+    checkFileExists();
+  };
+
+  // Check if file exists on component mount
+  React.useEffect(() => {
+    checkFileExists();
+  }, [fileId]);
 
   const canPreview = fileType.startsWith('image/') || fileType.includes('pdf');
   const FileIcon = getFileIcon();
@@ -78,46 +111,86 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
       <motion.div 
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`flex items-center justify-between p-4 bg-white dark:bg-secondary-800 border border-secondary-200 dark:border-secondary-700 rounded-lg hover:shadow-soft transition-all duration-200 ${className}`}
+        className={`flex items-center justify-between p-4 border border-secondary-200 dark:border-secondary-700 rounded-lg transition-all duration-200 ${
+          fileNotFound 
+            ? 'bg-error-50 dark:bg-error-900/20 border-error-200 dark:border-error-800' 
+            : 'bg-white dark:bg-secondary-800 hover:shadow-soft'
+        } ${className}`}
       >
         <div className="flex items-center space-x-3 flex-1 min-w-0">
-          <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900/40 rounded-lg flex items-center justify-center flex-shrink-0">
-            <FileIcon className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+          <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+            fileNotFound 
+              ? 'bg-error-100 dark:bg-error-900/40' 
+              : 'bg-primary-100 dark:bg-primary-900/40'
+          }`}>
+            {fileNotFound ? (
+              <AlertCircle className="w-5 h-5 text-error-600 dark:text-error-400" />
+            ) : (
+              <FileIcon className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+            )}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-secondary-900 dark:text-secondary-100 truncate">
+            <p className={`text-sm font-medium truncate ${
+              fileNotFound 
+                ? 'text-error-900 dark:text-error-100' 
+                : 'text-secondary-900 dark:text-secondary-100'
+            }`}>
               {fileName}
             </p>
-            <div className="flex items-center space-x-2 text-xs text-secondary-500 dark:text-secondary-400">
+            <div className={`flex items-center space-x-2 text-xs ${
+              fileNotFound 
+                ? 'text-error-600 dark:text-error-400' 
+                : 'text-secondary-500 dark:text-secondary-400'
+            }`}>
               <span>{formatFileSize(fileSize)}</span>
               <span>•</span>
               <span className="uppercase">{fileType.split('/')[1] || 'file'}</span>
+              {fileNotFound && (
+                <>
+                  <span>•</span>
+                  <span className="text-error-600 dark:text-error-400 font-medium">File not found</span>
+                </>
+              )}
             </div>
           </div>
         </div>
         
         <div className="flex items-center space-x-2 ml-3">
-          {canPreview && (
+          {fileNotFound ? (
             <Button
               variant="ghost"
               size="sm"
-              onClick={handleView}
-              loading={loading}
-              className="p-2 hover:bg-primary-50 dark:hover:bg-primary-900/20"
-              title="View file"
+              onClick={handleRetry}
+              className="p-2 hover:bg-error-100 dark:hover:bg-error-900/20 text-error-600 dark:text-error-400"
+              title="Retry"
             >
-              <Eye className="w-4 h-4" />
+              <RefreshCw className="w-4 h-4" />
             </Button>
+          ) : (
+            <>
+              {canPreview && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleView}
+                  loading={loading}
+                  className="p-2 hover:bg-primary-50 dark:hover:bg-primary-900/20"
+                  title="View file"
+                >
+                  <Eye className="w-4 h-4" />
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleDownload}
+                className="p-2 hover:bg-secondary-100 dark:hover:bg-secondary-700"
+                title="Download file"
+              >
+                <Download className="w-4 h-4" />
+              </Button>
+            </>
           )}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleDownload}
-            className="p-2 hover:bg-secondary-100 dark:hover:bg-secondary-700"
-            title="Download file"
-          >
-            <Download className="w-4 h-4" />
-          </Button>
         </div>
       </motion.div>
 
@@ -141,6 +214,10 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
                     alt={fileName}
                     className="max-w-full h-auto rounded-lg shadow-soft"
                     style={{ maxHeight: '60vh' }}
+                    onError={() => {
+                      toast.error('Failed to load image preview');
+                      setFileNotFound(true);
+                    }}
                   />
                 </div>
               ) : fileType.includes('pdf') ? (
@@ -149,6 +226,10 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
                     src={fileData}
                     className="w-full h-full rounded-lg border border-secondary-200 dark:border-secondary-700"
                     title={fileName}
+                    onError={() => {
+                      toast.error('Failed to load PDF preview');
+                      setFileNotFound(true);
+                    }}
                   />
                 </div>
               ) : (
@@ -166,8 +247,11 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
           ) : (
             <div className="text-center py-12">
               <AlertCircle className="w-16 h-16 text-error-500 mx-auto mb-4" />
-              <p className="text-error-600 dark:text-error-400">
+              <p className="text-error-600 dark:text-error-400 mb-2">
                 Failed to load file preview
+              </p>
+              <p className="text-sm text-secondary-500 dark:text-secondary-400">
+                The file may have been removed or corrupted
               </p>
             </div>
           )}
@@ -186,10 +270,12 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
               >
                 Close
               </Button>
-              <Button onClick={handleDownload} className="group">
-                <Download className="w-4 h-4 mr-2 group-hover:translate-y-0.5 transition-transform" />
-                Download
-              </Button>
+              {!fileNotFound && (
+                <Button onClick={handleDownload} className="group">
+                  <Download className="w-4 h-4 mr-2 group-hover:translate-y-0.5 transition-transform" />
+                  Download
+                </Button>
+              )}
             </div>
           </div>
         </div>

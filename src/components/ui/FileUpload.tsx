@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Upload, File, X, CheckCircle, AlertCircle } from 'lucide-react';
+import { Upload, File, X, CheckCircle, AlertCircle, HardDrive } from 'lucide-react';
+import { getStorageInfo } from '../../services/fileStorage';
 import { cn } from '../../lib/utils';
 
 interface FileUploadProps {
@@ -33,6 +34,12 @@ const FileUpload: React.FC<FileUploadProps> = ({
     // Check file size
     if (file.size > maxSize * 1024 * 1024) {
       return `File size must be less than ${maxSize}MB`;
+    }
+
+    // Check storage space
+    const storageInfo = getStorageInfo();
+    if (file.size > storageInfo.available) {
+      return 'Not enough storage space. Please clear some files and try again.';
     }
 
     // Check file type
@@ -124,6 +131,10 @@ const FileUpload: React.FC<FileUploadProps> = ({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  // Get storage info for display
+  const storageInfo = getStorageInfo();
+  const storageUsagePercent = (storageInfo.used / (storageInfo.used + storageInfo.available)) * 100;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -133,6 +144,20 @@ const FileUpload: React.FC<FileUploadProps> = ({
       <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-300">
         {label} {required && <span className="text-error-500">*</span>}
       </label>
+
+      {/* Storage Info */}
+      {storageInfo.files > 0 && (
+        <div className="flex items-center space-x-2 text-xs text-secondary-500 dark:text-secondary-400 mb-2">
+          <HardDrive className="w-3 h-3" />
+          <span>Storage: {formatFileSize(storageInfo.used)} used</span>
+          <div className="flex-1 bg-secondary-200 dark:bg-secondary-700 rounded-full h-1 max-w-20">
+            <div 
+              className="bg-primary-500 h-1 rounded-full transition-all duration-300"
+              style={{ width: `${Math.min(storageUsagePercent, 100)}%` }}
+            />
+          </div>
+        </div>
+      )}
 
       <div
         className={cn(
