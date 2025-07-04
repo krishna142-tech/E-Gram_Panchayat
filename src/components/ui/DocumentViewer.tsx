@@ -44,6 +44,11 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
   };
 
   const checkFileExists = () => {
+    if (!fileId || fileId === 'undefined' || fileId === 'null') {
+      setFileNotFound(true);
+      return false;
+    }
+    
     const exists = fileExists(fileId);
     setFileNotFound(!exists);
     return exists;
@@ -106,6 +111,34 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
   const canPreview = fileType.startsWith('image/') || fileType.includes('pdf');
   const FileIcon = getFileIcon();
 
+  // If no valid fileId, show placeholder
+  if (!fileId || fileId === 'undefined' || fileId === 'null') {
+    return (
+      <div className={`flex items-center justify-between p-4 border border-secondary-200 dark:border-secondary-700 rounded-lg bg-secondary-50 dark:bg-secondary-800 ${className}`}>
+        <div className="flex items-center space-x-3 flex-1 min-w-0">
+          <div className="w-10 h-10 bg-secondary-200 dark:bg-secondary-700 rounded-lg flex items-center justify-center flex-shrink-0">
+            <File className="w-5 h-5 text-secondary-400" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-secondary-600 dark:text-secondary-400 truncate">
+              {fileName || 'Unknown file'}
+            </p>
+            <div className="flex items-center space-x-2 text-xs text-secondary-500 dark:text-secondary-400">
+              <span>{formatFileSize(fileSize || 0)}</span>
+              <span>•</span>
+              <span className="text-warning-600 dark:text-warning-400">File reference missing</span>
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center space-x-2 ml-3">
+          <span className="text-xs text-secondary-500 dark:text-secondary-400 px-2 py-1 bg-secondary-200 dark:bg-secondary-700 rounded">
+            No file ID
+          </span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <motion.div 
@@ -157,15 +190,20 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
         
         <div className="flex items-center space-x-2 ml-3">
           {fileNotFound ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleRetry}
-              className="p-2 hover:bg-error-100 dark:hover:bg-error-900/20 text-error-600 dark:text-error-400"
-              title="Retry"
-            >
-              <RefreshCw className="w-4 h-4" />
-            </Button>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleRetry}
+                className="p-2 hover:bg-error-100 dark:hover:bg-error-900/20 text-error-600 dark:text-error-400"
+                title="Retry"
+              >
+                <RefreshCw className="w-4 h-4" />
+              </Button>
+              <span className="text-xs text-error-600 dark:text-error-400 px-2 py-1 bg-error-100 dark:bg-error-900/20 rounded">
+                Missing
+              </span>
+            </div>
           ) : (
             <>
               {canPreview && (

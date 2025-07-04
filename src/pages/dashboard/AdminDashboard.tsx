@@ -718,6 +718,12 @@ const AdminDashboard: React.FC = () => {
             {selectedApplication.formData.uploadedDocuments && (
               <div>
                 <h4 className="font-medium text-secondary-900 dark:text-white mb-2">Uploaded Documents</h4>
+                <div className="bg-secondary-50 dark:bg-secondary-800 rounded-lg p-4 mb-4">
+                  <p className="text-sm text-secondary-600 dark:text-secondary-300">
+                    <strong>Note:</strong> Files are stored locally in browser storage. If files show as "not found", 
+                    they may have been cleared from browser storage or uploaded from a different session.
+                  </p>
+                </div>
                 <div className="space-y-4">
                   {Object.entries(selectedApplication.formData.uploadedDocuments).map(([key, files]) => (
                     <div key={key} className="space-y-2">
@@ -729,10 +735,10 @@ const AdminDashboard: React.FC = () => {
                         {(files as any[]).map((file: any, index: number) => (
                           <DocumentViewer
                             key={index}
-                            fileId={file.url}
-                            fileName={file.name}
-                            fileSize={file.size}
-                            fileType={file.type}
+                            fileId={file.url || ''}
+                            fileName={file.name || 'Unknown file'}
+                            fileSize={file.size || 0}
+                            fileType={file.type || 'application/octet-stream'}
                           />
                         ))}
                       </div>
