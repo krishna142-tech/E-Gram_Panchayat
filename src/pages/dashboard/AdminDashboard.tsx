@@ -1,467 +1,201 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { format } from 'date-fns';
-import { 
-  Users, 
-  FileText, 
-  Clock, 
-  CheckCircle, 
-  XCircle, 
-  TrendingUp,
-  Search,
-  Filter,
-  Download,
-  Eye,
-  Edit,
-  Trash2,
-  RefreshCw,
-  File
-} from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
-import { getAllApplications, updateApplicationStatus, deleteApplication } from '../../services/applications';
-import { Application } from '../../types';
-import Card from '../../components/ui/Card';
-import Button from '../../components/ui/Button';
-import Input from '../../components/ui/Input';
-import StatusBadge from '../../components/Common/StatusBadge';
-import LoadingSpinner from '../../components/Common/LoadingSpinner';
-import Modal from '../../components/ui/Modal';
-import DocumentViewer from '../../components/ui/DocumentViewer';
+import { Download, Eye, X, File, Image, FileText, AlertCircle } from 'lucide-react';
+import { downloadFile, getFileData } from '../../services/fileStorage';
+import Button from './Button';
+import Modal from './Modal';
+import toast from 'react-hot-toast';
 
-const AdminDashboard: React.FC = () => {
-  const { user } = useAuth();
-  const [applications, setApplications] = useState<Application[]>([]);
-  const [filteredApplications, setFilteredApplications] = useState<Application[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [updating, setUpdating] = useState<string | null>(null);
+interface DocumentViewerProps {
+  fileId: string;
+  fileName: string;
+  fileSize: number;
+  fileType: string;
+  className?: string;
+}
 
-  const stats = {
-    total: applications.length,
-    pending: applications.filter(app => app.status === 'pending').length,
-    underReview: applications.filter(app => app.status === 'under_review').length,
-    approved: applications.filter(app => app.status === 'approved').length,
-    rejected: applications.filter(app => app.status === 'rejected').length,
+const DocumentViewer: React.FC<DocumentViewerProps> = ({
+  fileId,
+  fileName,
+  fileSize,
+  fileType,
+  className = '',
+}) => {
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
+  const [fileData, setFileData] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const loadApplications = async (isRefresh = false) => {
-    if (isRefresh) {
-      setRefreshing(true);
-    } else {
-      setLoading(true);
+  const getFileIcon = () => {
+    if (fileType.startsWith('image/')) {
+      return Image;
+    } else if (fileType.includes('pdf') || fileType.includes('document')) {
+      return FileText;
     }
+    return File;
+  };
 
+  const handleView = async () => {
+    setLoading(true);
     try {
-      const allApplications = await getAllApplications();
-      setApplications(allApplications);
-      setFilteredApplications(allApplications);
+      const data = getFileData(fileId);
+      if (data) {
+        setFileData(data.data);
+        setIsViewerOpen(true);
+      } else {
+        toast.error('File not found or corrupted');
+      }
     } catch (error) {
-      console.error('Error loading applications:', error);
+      console.error('Error loading file:', error);
+      toast.error('Failed to load file');
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   };
 
-  const handleStatusUpdate = async (applicationId: string, newStatus: string, remarks?: string) => {
-    setUpdating(applicationId);
+  const handleDownload = () => {
     try {
-      await updateApplicationStatus(applicationId, newStatus, remarks);
-      await loadApplications(true);
-      setShowDetailsModal(false);
+      downloadFile(fileId);
+      toast.success('File downloaded successfully');
     } catch (error) {
-      console.error('Error updating application status:', error);
-    } finally {
-      setUpdating(null);
+      console.error('Error downloading file:', error);
+      toast.error('Failed to download file');
     }
   };
 
-  const handleDeleteApplication = async (applicationId: string) => {
-    if (window.confirm('Are you sure you want to delete this application?')) {
-      try {
-        await deleteApplication(applicationId, user?.uid || '');
-        await loadApplications(true);
-        setShowDetailsModal(false);
-      } catch (error) {
-        console.error('Error deleting application:', error);
-      }
-    }
-  };
-
-  const filterApplications = () => {
-    let filtered = applications;
-
-    if (searchTerm) {
-      filtered = filtered.filter(app => 
-        app.serviceName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        app.userEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        app.id.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(app => app.status === statusFilter);
-    }
-
-    setFilteredApplications(filtered);
-  };
-
-  useEffect(() => {
-    loadApplications();
-  }, []);
-
-  useEffect(() => {
-    filterApplications();
-  }, [searchTerm, statusFilter, applications]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner size="lg" />
-      </div>
-    );
-  }
+  const canPreview = fileType.startsWith('image/') || fileType.includes('pdf');
+  const FileIcon = getFileIcon();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-secondary-50 dark:from-secondary-900 dark:via-secondary-800 dark:to-secondary-900">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-r from-primary-600 to-primary-700 dark:from-primary-700 dark:to-primary-800">
-        <div className="absolute inset-0 bg-black/10"></div>
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="text-center"
-          >
-            <h1 className="text-4xl md:text-5xl font-bold text-white mb-6">
-              Admin Dashboard
-            </h1>
-            <p className="text-xl text-primary-100 mb-8 max-w-3xl mx-auto">
-              Manage applications, review submissions, and oversee the entire system.
+    <>
+      <motion.div 
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className={`flex items-center justify-between p-4 bg-white dark:bg-secondary-800 border border-secondary-200 dark:border-secondary-700 rounded-lg hover:shadow-soft transition-all duration-200 ${className}`}
+      >
+        <div className="flex items-center space-x-3 flex-1 min-w-0">
+          <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900/40 rounded-lg flex items-center justify-center flex-shrink-0">
+            <FileIcon className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-secondary-900 dark:text-secondary-100 truncate">
+              {fileName}
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button 
-                variant="secondary" 
-                size="lg"
-                onClick={() => loadApplications(true)}
-                loading={refreshing}
-                className="group"
-              >
-                <RefreshCw className="w-5 h-5 mr-2 group-hover:rotate-180 transition-transform duration-300" />
-                Refresh Data
-              </Button>
-              <Button className="group">
-                <Download className="w-4 h-4 mr-2" />
-                Export Report
-              </Button>
+            <div className="flex items-center space-x-2 text-xs text-secondary-500 dark:text-secondary-400">
+              <span>{formatFileSize(fileSize)}</span>
+              <span>•</span>
+              <span className="uppercase">{fileType.split('/')[1] || 'file'}</span>
             </div>
-          </motion.div>
+          </div>
         </div>
-      </section>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-          {[
-            { icon: FileText, label: 'Total', value: stats.total, color: 'from-blue-500 to-blue-600' },
-            { icon: Clock, label: 'Pending', value: stats.pending, color: 'from-gray-500 to-gray-600' },
-            { icon: Clock, label: 'Under Review', value: stats.underReview, color: 'from-yellow-500 to-yellow-600' },
-            { icon: CheckCircle, label: 'Approved', value: stats.approved, color: 'from-green-500 to-green-600' },
-            { icon: XCircle, label: 'Rejected', value: stats.rejected, color: 'from-red-500 to-red-600' },
-          ].map((stat, index) => (
-            <motion.div
-              key={stat.label}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: index * 0.1 }}
+        
+        <div className="flex items-center space-x-2 ml-3">
+          {canPreview && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleView}
+              loading={loading}
+              className="p-2 hover:bg-primary-50 dark:hover:bg-primary-900/20"
+              title="View file"
             >
-              <Card hover className="text-center">
-                <div className={`w-12 h-12 bg-gradient-to-br ${stat.color} rounded-xl flex items-center justify-center mb-4 mx-auto shadow-soft`}>
-                  <stat.icon className="w-6 h-6 text-white" />
-                </div>
-                <p className="text-2xl font-bold text-secondary-900 dark:text-white mb-1">
-                  {stat.value}
-                </p>
-                <p className="text-sm text-secondary-600 dark:text-secondary-400">
-                  {stat.label}
-                </p>
-              </Card>
-            </motion.div>
-          ))}
+              <Eye className="w-4 h-4" />
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleDownload}
+            className="p-2 hover:bg-secondary-100 dark:hover:bg-secondary-700"
+            title="Download file"
+          >
+            <Download className="w-4 h-4" />
+          </Button>
         </div>
+      </motion.div>
 
-        {/* Filters */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="mb-6"
-        >
-          <Card>
-            <div className="p-6">
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="flex-1">
-                  <Input
-                    type="text"
-                    placeholder="Search by service, email, or ID..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    icon={<Search className="w-5 h-5 text-secondary-400" />}
+      {/* File Viewer Modal */}
+      <Modal
+        isOpen={isViewerOpen}
+        onClose={() => {
+          setIsViewerOpen(false);
+          setFileData(null);
+        }}
+        title={`Preview: ${fileName}`}
+        size="xl"
+      >
+        <div className="space-y-4">
+          {fileData ? (
+            <div className="max-h-[70vh] overflow-auto bg-secondary-50 dark:bg-secondary-900 rounded-lg p-4">
+              {fileType.startsWith('image/') ? (
+                <div className="text-center">
+                  <img
+                    src={fileData}
+                    alt={fileName}
+                    className="max-w-full h-auto rounded-lg shadow-soft"
+                    style={{ maxHeight: '60vh' }}
                   />
                 </div>
-                <div className="md:w-48">
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="w-full px-3 py-2 border border-secondary-300 dark:border-secondary-600 rounded-lg bg-white dark:bg-secondary-800 text-secondary-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  >
-                    <option value="all">All Status</option>
-                    <option value="pending">Pending</option>
-                    <option value="under_review">Under Review</option>
-                    <option value="approved">Approved</option>
-                    <option value="rejected">Rejected</option>
-                  </select>
+              ) : fileType.includes('pdf') ? (
+                <div className="w-full h-96">
+                  <iframe
+                    src={fileData}
+                    className="w-full h-full rounded-lg border border-secondary-200 dark:border-secondary-700"
+                    title={fileName}
+                  />
                 </div>
-              </div>
-            </div>
-          </Card>
-        </motion.div>
-
-        {/* Applications Table */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.3 }}
-        >
-          <Card>
-            <div className="px-6 py-4 border-b border-secondary-200 dark:border-secondary-700">
-              <h2 className="text-xl font-semibold text-secondary-900 dark:text-white">
-                All Applications ({filteredApplications.length})
-              </h2>
-            </div>
-
-            {filteredApplications.length === 0 ? (
-              <div className="text-center py-16">
-                <FileText className="mx-auto h-16 w-16 text-secondary-400 mb-6" />
-                <h3 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4">
-                  No Applications Found
-                </h3>
-                <p className="text-secondary-600 dark:text-secondary-300">
-                  {applications.length === 0 
-                    ? "No applications have been submitted yet."
-                    : "No applications match your current filters."
-                  }
-                </p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-secondary-200 dark:divide-secondary-700">
-                  <thead className="bg-secondary-50 dark:bg-secondary-800">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 dark:text-secondary-400 uppercase tracking-wider">
-                        Application
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 dark:text-secondary-400 uppercase tracking-wider">
-                        User
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 dark:text-secondary-400 uppercase tracking-wider">
-                        Status
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 dark:text-secondary-400 uppercase tracking-wider">
-                        Submitted
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 dark:text-secondary-400 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white dark:bg-secondary-800 divide-y divide-secondary-200 dark:divide-secondary-700">
-                    {filteredApplications.map((application, index) => (
-                      <motion.tr
-                        key={application.id}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.5, delay: index * 0.05 }}
-                        className="hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
-                      >
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-secondary-900 dark:text-white">
-                            {application.serviceName}
-                          </div>
-                          <div className="text-sm text-secondary-500 dark:text-secondary-400">
-                            ID: {application.id.slice(-8)}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-secondary-900 dark:text-white">
-                            {application.userEmail}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <StatusBadge status={application.status} />
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-secondary-900 dark:text-secondary-300">
-                          {format(application.submittedAt, 'MMM dd, yyyy')}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div className="flex space-x-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                setSelectedApplication(application);
-                                setShowDetailsModal(true);
-                              }}
-                            >
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleDeleteApplication(application.id)}
-                              className="text-red-600 hover:text-red-700"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </motion.tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </Card>
-        </motion.div>
-      </div>
-
-      {/* Application Details Modal */}
-      <Modal
-        isOpen={showDetailsModal}
-        onClose={() => setShowDetailsModal(false)}
-        title="Application Details"
-        size="lg"
-      >
-        {selectedApplication && (
-          <div className="space-y-6">
-            {/* Basic Info */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-300 mb-1">
-                  Service
-                </label>
-                <p className="text-secondary-900 dark:text-white">{selectedApplication.serviceName}</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-300 mb-1">
-                  User Email
-                </label>
-                <p className="text-secondary-900 dark:text-white">{selectedApplication.userEmail}</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-300 mb-1">
-                  Status
-                </label>
-                <StatusBadge status={selectedApplication.status} />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-300 mb-1">
-                  Submitted
-                </label>
-                <p className="text-secondary-900 dark:text-white">
-                  {format(selectedApplication.submittedAt, 'MMM dd, yyyy HH:mm')}
-                </p>
-              </div>
-            </div>
-
-            {/* Form Data */}
-            <div>
-              <h4 className="font-medium text-secondary-900 dark:text-white mb-2">Form Data</h4>
-              <div className="bg-secondary-50 dark:bg-secondary-800 rounded-lg p-4">
-                <pre className="text-sm text-secondary-700 dark:text-secondary-300 whitespace-pre-wrap">
-                  {JSON.stringify(selectedApplication.formData, null, 2)}
-                </pre>
-              </div>
-            </div>
-
-            {/* Uploaded Documents */}
-            {selectedApplication.formData.uploadedDocuments && (
-              <div>
-                <h4 className="font-medium text-secondary-900 dark:text-white mb-2">Uploaded Documents</h4>
-                <div className="space-y-4">
-                  {Object.entries(selectedApplication.formData.uploadedDocuments).map(([key, files]) => (
-                    <div key={key} className="space-y-2">
-                      <h5 className="text-sm font-semibold text-secondary-900 dark:text-secondary-100 mb-3 flex items-center">
-                        <File className="w-4 h-4 mr-2 text-primary-600 dark:text-primary-400" />
-                        Document {parseInt(key.replace('document_', '')) + 1}
-                      </h5>
-                      <div className="space-y-2">
-                        {files.map((file: any, index: number) => (
-                          <DocumentViewer
-                            key={index}
-                            fileId={file.url}
-                            fileName={file.name}
-                            fileSize={file.size}
-                            fileType={file.type}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  ))}
+              ) : (
+                <div className="text-center py-12">
+                  <FileText className="w-16 h-16 text-secondary-400 mx-auto mb-4" />
+                  <p className="text-secondary-600 dark:text-secondary-300 mb-2">
+                    Preview not available for this file type
+                  </p>
+                  <p className="text-sm text-secondary-500 dark:text-secondary-400">
+                    You can download the file to view its contents
+                  </p>
                 </div>
-              </div>
-            )}
-
-            {/* Remarks */}
-            {selectedApplication.remarks && (
-              <div>
-                <h4 className="font-medium text-secondary-900 dark:text-white mb-2">Remarks</h4>
-                <p className="text-secondary-700 dark:text-secondary-300 bg-secondary-50 dark:bg-secondary-800 rounded-lg p-4">
-                  {selectedApplication.remarks}
-                </p>
-              </div>
-            )}
-
-            {/* Status Update Actions */}
-            <div className="flex flex-wrap gap-2 pt-4 border-t border-secondary-200 dark:border-secondary-700">
-              <Button
-                onClick={() => handleStatusUpdate(selectedApplication.id, 'under_review')}
-                loading={updating === selectedApplication.id}
-                disabled={selectedApplication.status === 'under_review'}
-                variant="outline"
-                size="sm"
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <AlertCircle className="w-16 h-16 text-error-500 mx-auto mb-4" />
+              <p className="text-error-600 dark:text-error-400">
+                Failed to load file preview
+              </p>
+            </div>
+          )}
+          
+          <div className="flex justify-between items-center pt-4 border-t border-secondary-200 dark:border-secondary-700">
+            <div className="text-sm text-secondary-600 dark:text-secondary-400">
+              {formatFileSize(fileSize)} • {fileType}
+            </div>
+            <div className="flex space-x-3">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setIsViewerOpen(false);
+                  setFileData(null);
+                }}
               >
-                Mark Under Review
+                Close
               </Button>
-              <Button
-                onClick={() => handleStatusUpdate(selectedApplication.id, 'approved')}
-                loading={updating === selectedApplication.id}
-                disabled={selectedApplication.status === 'approved'}
-                className="bg-green-600 hover:bg-green-700"
-                size="sm"
-              >
-                Approve
-              </Button>
-              <Button
-                onClick={() => handleStatusUpdate(selectedApplication.id, 'rejected', 'Application rejected by admin')}
-                loading={updating === selectedApplication.id}
-                disabled={selectedApplication.status === 'rejected'}
-                className="bg-red-600 hover:bg-red-700"
-                size="sm"
-              >
-                Reject
+              <Button onClick={handleDownload} className="group">
+                <Download className="w-4 h-4 mr-2 group-hover:translate-y-0.5 transition-transform" />
+                Download
               </Button>
             </div>
           </div>
-        )}
+        </div>
       </Modal>
-    </div>
+    </>
   );
 };
 
-export default AdminDashboard;
+export default DocumentViewer;
