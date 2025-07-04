@@ -82,7 +82,7 @@ const AdminDashboard: React.FC = () => {
   const handleDeleteApplication = async (applicationId: string) => {
     if (window.confirm('Are you sure you want to delete this application?')) {
       try {
-        await deleteApplication(applicationId);
+        await deleteApplication(applicationId, user?.uid || '');
         await loadApplications(true);
         setShowDetailsModal(false);
       } catch (error) {

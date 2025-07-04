@@ -4,6 +4,7 @@ import {
   getDocs,
   addDoc,
   updateDoc,
+  deleteDoc,
   query,
   where,
   orderBy,
@@ -140,5 +141,21 @@ export const updateApplicationStatus = async (
   } catch (error) {
     console.error('Error updating application status:', error);
     throw new Error('Failed to update application status. Please try again.');
+  }
+};
+export const deleteApplication = async (
+  id: string,
+  userId: string
+): Promise<void> => {
+  try {
+    const docRef = doc(db, 'applications', id);
+    await deleteDoc(docRef);
+    
+    await logAction(userId, 'DELETE_APPLICATION', {
+      applicationId: id,
+    });
+  } catch (error) {
+    console.error('Error deleting application:', error);
+    throw new Error('Failed to delete application. Please try again.');
   }
 };
