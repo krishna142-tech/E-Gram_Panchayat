@@ -14,7 +14,7 @@ import {
   Calendar
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { getApplicationsByUserId } from '../../services/applications';
+import { getUserApplications } from '../../services/applications';
 import { Application } from '../../types';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
@@ -44,7 +44,7 @@ const UserDashboard: React.FC = () => {
 
     try {
       if (user?.uid) {
-        const userApplications = await getApplicationsByUserId(user.uid);
+        const userApplications = await getUserApplications(user.uid);
         setApplications(userApplications);
       }
     } catch (error) {
