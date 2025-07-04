@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Download, Eye, X, File, Image, FileText, AlertCircle } from 'lucide-react';
+import { Download, Eye, File, Image, FileText, AlertCircle } from 'lucide-react';
 import { downloadFile, getFileData } from '../../services/fileStorage';
 import Button from './Button';
 import Modal from './Modal';
