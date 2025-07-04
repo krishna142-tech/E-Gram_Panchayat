@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Plus, Edit2, Trash2, Users, FileText, Settings, Eye, BarChart3, Shield, File } from 'lucide-react';
 import { getServices, createService, updateService, deleteService } from '../../services/services';
 import { getAllApplications, updateApplicationStatus } from '../../services/applications';
+import DocumentViewer from '../../components/ui/DocumentViewer';
 import { useAuth } from '../../context/AuthContext';
 import { Service, Application } from '../../types';
 import Card from '../../components/ui/Card';
@@ -362,7 +363,20 @@ const AdminDashboard: React.FC = () => {
           >
             <Card>
               <div className="px-6 py-4 border-b border-secondary-200 dark:border-secondary-700">
-                <h2 className="text-lg font-semibold text-secondary-900 dark:text-white">Services Management</h2>
+                <div className="flex justify-between items-center">
+                  <h2 className="text-lg font-semibold text-secondary-900 dark:text-white">Services Management</h2>
+                  <Button
+                    onClick={() => {
+                      resetServiceForm();
+                      setEditingService(null);
+                      setShowServiceModal(true);
+                    }}
+                    className="group"
+                  >
+                    <Plus className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
+                    Add New Service
+                  </Button>
+                </div>
               </div>
 
               {services.length === 0 ? (
@@ -399,7 +413,13 @@ const AdminDashboard: React.FC = () => {
                           Fee
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 dark:text-secondary-400 uppercase tracking-wider">
+                          Documents Required
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 dark:text-secondary-400 uppercase tracking-wider">
                           Status
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 dark:text-secondary-400 uppercase tracking-wider">
+                          Created
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 dark:text-secondary-400 uppercase tracking-wider">
                           Actions
@@ -425,14 +445,21 @@ const AdminDashboard: React.FC = () => {
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-secondary-900 dark:text-secondary-300">
                             ₹{service.fee}
                           </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-secondary-900 dark:text-secondary-300">
+                            {service.requiredDocuments.length} docs
+                          </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                               service.isActive
                                 ? 'bg-success-100 text-success-800 dark:bg-success-900 dark:text-success-200'
                                 : 'bg-secondary-100 text-secondary-800 dark:bg-secondary-700 dark:text-secondary-200'
+                                : 'bg-error-100 text-error-800 dark:bg-error-900 dark:text-error-200'
                             }`}>
-                              {service.isActive ? 'Active' : 'Inactive'}
+                              {service.isActive ? 'Active' : 'Disabled'}
                             </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-secondary-900 dark:text-secondary-300">
+                            {format(service.createdAt, 'MMM dd, yyyy')}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <div className="flex space-x-2">
@@ -440,14 +467,31 @@ const AdminDashboard: React.FC = () => {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => openEditModal(service)}
+                                className="text-primary-600 hover:text-primary-700"
+                                title="Edit Service"
                               >
                                 <Edit2 className="w-4 h-4" />
                               </Button>
                               <Button
                                 variant="ghost"
                                 size="sm"
+                                onClick={() => {
+                                  if (window.confirm(`Are you sure you want to ${service.isActive ? 'disable' : 'enable'} this service?`)) {
+                                    updateService(service.id, { isActive: !service.isActive }, user!.uid);
+                                    loadData();
+                                  }
+                                }}
+                                className={service.isActive ? 'text-warning-600 hover:text-warning-700' : 'text-success-600 hover:text-success-700'}
+                                title={service.isActive ? 'Disable Service' : 'Enable Service'}
+                              >
+                                {service.isActive ? '⏸️' : '▶️'}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
                                 onClick={() => handleDeleteService(service.id)}
                                 className="text-error-600 hover:text-error-700"
+                                title="Delete Service"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </Button>
@@ -563,6 +607,18 @@ const AdminDashboard: React.FC = () => {
         size="lg"
       >
         <form onSubmit={editingService ? handleUpdateService : handleCreateService} className="space-y-6">
+          <div className="bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-xl p-4">
+            <div className="flex items-start space-x-3">
+              <Settings className="w-5 h-5 text-primary-600 dark:text-primary-400 mt-0.5 flex-shrink-0" />
+              <div>
+                <h4 className="text-sm font-medium text-primary-900 dark:text-primary-100">Service Information</h4>
+                <p className="text-sm text-primary-700 dark:text-primary-300 mt-1">
+                  {editingService ? 'Update the service details below.' : 'Fill in the details for the new government service.'}
+                </p>
+              </div>
+            </div>
+          </div>
+
           <Input
             label="Service Title *"
             type="text"
@@ -602,14 +658,18 @@ const AdminDashboard: React.FC = () => {
               value={serviceForm.fee}
               onChange={(e) => setServiceForm(prev => ({ ...prev, fee: parseInt(e.target.value) || 0 }))}
               placeholder="0"
+              min="0"
               required
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-300 mb-2">
-              Required Documents
+              Required Documents *
             </label>
+            <p className="text-xs text-secondary-500 dark:text-secondary-400 mb-3">
+              Add all documents that citizens need to upload when applying for this service.
+            </p>
             <div className="space-y-2">
               {serviceForm.requiredDocuments.map((doc, index) => (
                 <div key={index} className="flex space-x-2">
@@ -618,15 +678,17 @@ const AdminDashboard: React.FC = () => {
                     value={doc}
                     onChange={(e) => updateDocumentField(index, e.target.value)}
                     className="flex-1 px-4 py-3 border-2 border-secondary-200 dark:border-secondary-700 bg-white dark:bg-secondary-800 rounded-xl text-secondary-900 dark:text-secondary-100 placeholder-secondary-500 dark:placeholder-secondary-400 focus:border-primary-500 focus:ring-2 focus:ring-primary-500 focus:ring-opacity-20 transition-all duration-200"
-                    placeholder="Enter required document"
+                    placeholder="e.g., Aadhar Card, Income Certificate"
+                    required
                   />
                   {serviceForm.requiredDocuments.length > 1 && (
                     <Button
                       type="button"
-                      variant="outline"
+                      variant="ghost"
                       onClick={() => removeDocumentField(index)}
+                      className="text-error-600 hover:text-error-700"
                     >
-                      Remove
+                      <X className="w-4 h-4" />
                     </Button>
                   )}
                 </div>
@@ -637,12 +699,13 @@ const AdminDashboard: React.FC = () => {
                 onClick={addDocumentField}
                 className="text-primary-600 hover:text-primary-700"
               >
-                + Add Document
+                <Plus className="w-4 h-4 mr-1" />
+                Add Another Document
               </Button>
             </div>
           </div>
 
-          <div className="flex items-center">
+          <div className="flex items-center p-4 bg-secondary-50 dark:bg-secondary-800 rounded-xl">
             <input
               type="checkbox"
               id="isActive"
@@ -651,7 +714,10 @@ const AdminDashboard: React.FC = () => {
               className="w-4 h-4 text-primary-600 border-secondary-300 rounded focus:ring-primary-500 focus:ring-2"
             />
             <label htmlFor="isActive" className="ml-2 text-sm text-secondary-700 dark:text-secondary-300">
-              Service is active and available for applications
+              <span className="font-medium">Enable this service</span>
+              <span className="block text-xs text-secondary-500 dark:text-secondary-400 mt-1">
+                Citizens can apply for this service when enabled
+              </span>
             </label>
           </div>
 
@@ -668,7 +734,17 @@ const AdminDashboard: React.FC = () => {
               Cancel
             </Button>
             <Button type="submit">
-              {editingService ? 'Update Service' : 'Create Service'}
+              {editingService ? (
+                <>
+                  <Edit2 className="w-4 h-4 mr-2" />
+                  Update Service
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Service
+                </>
+              )}
             </Button>
           </div>
         </form>
@@ -720,12 +796,227 @@ const AdminDashboard: React.FC = () => {
             {selectedApplication.formData.uploadedDocuments && (
               <div>
                 <h4 className="font-medium text-secondary-900 dark:text-white mb-2">Uploaded Documents</h4>
-                <div className="bg-secondary-50 dark:bg-secondary-800 rounded-lg p-4">
-                  <div className="space-y-2">
+                <div className="space-y-3">
                     {Object.entries(selectedApplication.formData.uploadedDocuments).map(([key, files]) => (
-                      <div key={key} className="text-sm">
-                        <span className="font-medium text-secondary-900 dark:text-secondary-100">
-                          Document {key.replace('document_', '')}:
+-                      <div key={key} className="text-sm">
+-                        <span className="font-medium text-secondary-900 dark:text-secondary-100">
+-                          Document {key.replace('document_', '')}:
++                      <div key={key}>
++                        <h5 className="text-sm font-medium text-secondary-900 dark:text-secondary-100 mb-2">
++                          Required Document {parseInt(key.replace('document_', '')) + 1}
++                        </h5>
++                        <div className="space-y-2">
++                          {files.map((file: any, index: number) => (
++                            <DocumentViewer
++                              key={index}
++                              fileId={file.url}
++                              fileName={file.name}
++                              fileSize={file.size}
++                              fileType={file.type}
++                            />
++                          ))}
++                        </div>
++                      </div>
++                    ))}
++                </div>
++              </div>
++            )}
++            
++            <div>
++              <h4 className="font-medium text-secondary-900 dark:text-white mb-2">Current Status</h4>
++              <StatusBadge status={selectedApplication.status} />
++              {selectedApplication.remarks && (
++                <p className="text-sm text-secondary-600 dark:text-secondary-300 mt-2">
++                  <strong>Previous Remarks:</strong> {selectedApplication.remarks}
++                </p>
++              )}
++            </div>
++
++            <div>
++              <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-300 mb-2">
++                Remarks (Optional)
++              </label>
++              <textarea
++                rows={3}
++                value={remarks}
++                onChange={(e) => setRemarks(e.target.value)}
++                className="w-full px-4 py-3 border-2 border-secondary-200 dark:border-secondary-700 bg-white dark:bg-secondary-800 rounded-xl text-secondary-900 dark:text-secondary-100 placeholder-secondary-500 dark:placeholder-secondary-400 focus:border-primary-500 focus:ring-2 focus:ring-primary-500 focus:ring-opacity-20 transition-all duration-200"
++                placeholder="Add remarks about this application..."
++              />
++            </div>
++            
++            <div className="flex flex-col space-y-4">
++              <div>
++                <h5 className="text-sm font-medium text-secondary-700 dark:text-secondary-300 mb-3">
++                  Update Status
++                </h5>
++                <div className="flex flex-wrap gap-2">
++                  <Button
++                    onClick={() => handleStatusUpdate(selectedApplication.id, 'under-review')}
++                    loading={updating}
++                    variant="outline"
++                    className="bg-yellow-50 border-yellow-200 text-yellow-700 hover:bg-yellow-100"
++                  >
++                    Under Review
++                  </Button>
++                  <Button
++                    onClick={() => handleStatusUpdate(selectedApplication.id, 'approved')}
++                    loading={updating}
++                    variant="outline"
++                    className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
++                  >
++                    Approve
++                  </Button>
++                  <Button
++                    onClick={() => handleStatusUpdate(selectedApplication.id, 'rejected')}
++                    loading={updating}
++                    variant="outline"
++                    className="bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
++                  >
++                    Reject
++                  </Button>
++                </div>
++              </div>
++              
++              <div className="flex justify-end space-x-3 pt-4 border-t border-secondary-200 dark:border-secondary-700">
++                <Button
++                  variant="outline"
++                  onClick={() => {
++                    setSelectedApplication(null);
++                    setRemarks('');
++                  }}
++                >
++                  Close
++                </Button>
++              </div>
++            </div>
++          </div>
++        </Modal>
++      )}
++    </div>
++  );
++};
++
++export default StaffDashboard;
+```
+
+                      <div key={key}>
+                        <h5 className="text-sm font-medium text-secondary-900 dark:text-secondary-100 mb-2">
+                          Required Document {parseInt(key.replace('document_', '')) + 1}
+                        </h5>
+                        <div className="space-y-2">
+                          {files.map((file: any, index: number) => (
+                            <DocumentViewer
+                              key={index}
+                              fileId={file.url}
+                              fileName={file.name}
+                              fileSize={file.size}
+                              fileType={file.type}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+            
+            <div>
+              <h4 className="font-medium text-secondary-900 dark:text-white mb-2">Current Status</h4>
+              <StatusBadge status={selectedApplication.status} />
+              {selectedApplication.remarks && (
+                <p className="text-sm text-secondary-600 dark:text-secondary-300 mt-2">
+                  <strong>Previous Remarks:</strong> {selectedApplication.remarks}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-300 mb-2">
+                Remarks (Optional)
+              </label>
+              <textarea
+                rows={3}
+                value={remarks}
+                onChange={(e) => setRemarks(e.target.value)}
+                className="w-full px-4 py-3 border-2 border-secondary-200 dark:border-secondary-700 bg-white dark:bg-secondary-800 rounded-xl text-secondary-900 dark:text-secondary-100 placeholder-secondary-500 dark:placeholder-secondary-400 focus:border-primary-500 focus:ring-2 focus:ring-primary-500 focus:ring-opacity-20 transition-all duration-200"
+                placeholder="Add remarks about this application..."
+              />
+            </div>
+            
+            <div className="flex flex-col space-y-4">
+              <div>
+                <h5 className="text-sm font-medium text-secondary-700 dark:text-secondary-300 mb-3">
+                  Update Status (Admin Override)
+                </h5>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    onClick={() => handleStatusUpdate(selectedApplication.id, 'under-review')}
+                    loading={updating}
+                    variant="outline"
+                    className="bg-yellow-50 border-yellow-200 text-yellow-700 hover:bg-yellow-100"
+                  >
+                    Under Review
+                  </Button>
+                  <Button
+                    onClick={() => handleStatusUpdate(selectedApplication.id, 'approved')}
+                    loading={updating}
+                    variant="outline"
+                    className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+                  >
+                    Approve
+                  </Button>
+                  <Button
+                    onClick={() => handleStatusUpdate(selectedApplication.id, 'rejected')}
+                    loading={updating}
+                    variant="outline"
+                    className="bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
+                  >
+                    Reject
+                  </Button>
+                </div>
+                <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-2">
+                  As an admin, you can override any status set by staff members.
+                </p>
+              </div>
+              
+              <div className="flex justify-end space-x-3 pt-4 border-t border-secondary-200 dark:border-secondary-700">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedApplication(null);
+                    setRemarks('');
+                  }}
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+};
+
+export default AdminDashboard;
+```
+
+src/pages/dashboard/StaffDashboard.tsx:
+```diff
+@@ .. @@
+ import { FileText, Clock, Users, Eye, RefreshCw, Filter, File } from 'lucide-react';
+ import { getAllApplications, updateApplicationStatus } from '../../services/applications';
++import DocumentViewer from '../../components/ui/DocumentViewer';
+ import { useAuth } from '../../context/AuthContext';
+@@ .. @@
+             {/* Uploaded Documents */}
+             {selectedApplication.formData.uploadedDocuments && (
+               <div>
+                 <h4 className="font-medium text-secondary-900 dark:text-white mb-2">Uploaded Documents</h4>
+-                <div className="bg-secondary-50 dark:bg-secondary-800 rounded-lg p-4">
+-                  <div className="space-y-2">
++                <div className="space-y-3">
                         </span>
                         <div className="ml-4 mt-1 space-y-1">
                           {files.map((file: any, index: number) => (

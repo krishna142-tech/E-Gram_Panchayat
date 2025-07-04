@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { FileText, IndianRupee, AlertCircle, CheckCircle, ArrowLeft, Upload } from 'lucide-react';
 import { getServiceById } from '../services/services';
 import { submitApplication } from '../services/applications';
+import { uploadFile } from '../services/fileStorage';
 import { useAuth } from '../context/AuthContext';
 import { Service } from '../types';
 import Card from '../components/ui/Card';
@@ -111,18 +112,27 @@ const Apply: React.FC = () => {
 
     try {
       // Prepare form data with file information
+      // Upload files and get storage URLs
+      const uploadedDocuments: Record<string, any> = {};
+      
+      for (const [key, files] of Object.entries(uploadedFiles)) {
+        const uploadedFileData = [];
+        for (const file of files) {
+          const storedFile = await uploadFile(file);
+          uploadedFileData.push({
+            name: storedFile.name,
+            size: storedFile.size,
+            type: storedFile.type,
+            url: storedFile.url, // This is the file ID for retrieval
+            uploadedAt: storedFile.uploadedAt,
+          });
+        }
+        uploadedDocuments[key] = uploadedFileData;
+      }
+
       const applicationFormData = {
         ...formData,
-        uploadedDocuments: Object.entries(uploadedFiles).reduce((acc, [key, files]) => {
-          acc[key] = files.map(file => ({
-            name: file.name,
-            size: file.size,
-            type: file.type,
-            // In a real application, you would upload files to storage and store URLs
-            // For now, we'll just store file metadata
-          }));
-          return acc;
-        }, {} as Record<string, any>)
+        uploadedDocuments,
       };
 
       await submitApplication({
@@ -138,7 +148,7 @@ const Apply: React.FC = () => {
       navigate('/dashboard/user');
     } catch (error: any) {
       console.error('Error submitting application:', error);
-      toast.error(error.message || 'Failed to submit application');
+      toast.error(error.message || 'Failed to submit application. Please try again.');
     } finally {
       setSubmitting(false);
     }
