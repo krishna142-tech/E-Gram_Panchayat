@@ -878,7 +878,7 @@ Krishna Sevak is a passionate full-stack developer with expertise in modern web 
 
 ### **Project Links**
 
-- 🚀 **Live Demo**: [https://e-gram-panchayat-54791.web.app](https://e-gram-panchayat-54791.web.app)
+- 🚀 **Live Demo**: [https://e-gram-panchayat-delta.vercel.app/](https://e-gram-panchayat-delta.vercel.app/)
 - 📂 **Repository**: [https://github.com/your-username/digital-egram-panchayat](https://github.com/your-username/digital-egram-panchayat)
 - 📋 **Project Board**: [GitHub Projects](https://github.com/your-username/digital-egram-panchayat/projects)
 - 📊 **Analytics**: [Firebase Analytics Dashboard](https://console.firebase.google.com/)
