@@ -861,7 +861,7 @@ Krishna Sevak is a passionate full-stack developer with expertise in modern web 
 
 #### **Contact Information**
 - 📧 **Email**: krishnasevak.dev@gmail.com
-- 🌐 **Portfolio**: [krishnasevak.netlify.app](https://krishnasevak.netlify.app/)
+- 🌐 **Portfolio**: [krishnasevak.netlify.app](https://krishnasevak.vercel.app/)
 - 💼 **LinkedIn**: [linkedin.com/in/krishna-sevak](https://www.linkedin.com/in/krishna-sevak/)
 - 🐙 **GitHub**: [github.com/krishna142-tech](https://github.com/krishna142-tech)
 
