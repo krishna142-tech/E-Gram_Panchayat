@@ -840,7 +840,7 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 ### **Krishna Sevak**
 *Full Stack Developer & UI/UX Designer*
 
-[![Portfolio](https://img.shields.io/badge/Portfolio-krishnasevak.netlify.app-blue?style=for-the-badge&logo=netlify)](https://krishnasevak.netlify.app/)
+[![Portfolio](https://img.shields.io/badge/Portfolio-krishnasevak.vercel.app-blue?style=for-the-badge&logo=netlify)](https://krishnasevak.vercel.app/)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-krishna--sevak-blue?style=for-the-badge&logo=linkedin)](https://www.linkedin.com/in/krishna-sevak/)
 [![GitHub](https://img.shields.io/badge/GitHub-krishna142--tech-black?style=for-the-badge&logo=github)](https://github.com/krishna142-tech)
 [![Instagram](https://img.shields.io/badge/Instagram-krishnasevak57-purple?style=for-the-badge&logo=instagram)](https://www.instagram.com/krishnasevak57/)
